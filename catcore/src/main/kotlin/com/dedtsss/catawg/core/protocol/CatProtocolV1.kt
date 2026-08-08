@@ -508,6 +508,8 @@ private class CertificateFingerprintTrustManager(expectedFingerprint: String) : 
         val certificate =
             chain.firstOrNull()
                 ?: throw CertificateException("Server did not provide a certificate")
+        // Pinning identifies the expected leaf, while validity dates remain part of verified TLS.
+        certificate.checkValidity()
         val actual =
             MessageDigest.getInstance("SHA-256").digest(certificate.encoded).joinToString("") {
                 "%02x".format(it)
