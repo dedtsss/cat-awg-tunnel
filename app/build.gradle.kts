@@ -64,6 +64,7 @@ configure<ApplicationExtension> {
         targetSdk = Constants.TARGET_SDK
         versionCode = Constants.VERSION_CODE
         versionName = Constants.VERSION_NAME
+        buildConfigField("String", "GIT_SHA", "\"${project.getGitCommitHash()}\"")
 
         experimentalProperties["android.experimental.disableGitVersion"] = true
 

@@ -15,6 +15,13 @@ AndroidDomainRouteProvider ── VpnService.Builder.excludeRoute()
 
 catcore (pure Kotlin, portable)
   routing · diagnostics · configurator · Cat Protocol v1 · optional AI boundary
+
+Cat Server Android boundary
+  Compose pairing/configurator/diagnostics
+        │
+        ├── AndroidCatServerClient ── KtorCatServerClient ── pinned HTTPS Cat Server
+        ├── Android Keystore credential store
+        └── WorkManager diagnostics sync (never on the VPN critical path)
 ```
 
 ## Boundaries
@@ -28,8 +35,15 @@ catcore (pure Kotlin, portable)
 
 Room database version 37 adds `cat_domain_rules`, `cat_diagnostic_events`, and `cat_incidents`. DNS observations are bounded JSON lists inside the rule entity so history and route decisions remain co-located. Auto migration 36→37 schema is committed under `app/schemas`.
 
+Cat Server endpoint metadata, capabilities, sync state, public configurator candidates, and change
+history use DataStore. The device bearer token is AES-GCM encrypted under an Android Keystore key
+in `noBackupFilesDir`; it is deliberately absent from DataStore and Android backup/transfer.
+
 ## Security and scope
 
 - Browser history, domain names, IP history, and diagnostics stay local unless a user explicitly exports a sanitized bundle.
-- The default Cat Server and AI bindings are local mocks/disabled implementations. No provider secret is embedded in the APK.
-- This track does not implement a Cat Server. `CatServerClient` is an interface for Goal-B or a later paired TLS transport.
+- Production DI binds `CatServerClient` to `AndroidCatServerClient`, which creates the real pinned
+  `KtorCatServerClient` only after an HTTPS endpoint and verified certificate fingerprint are set.
+  `InMemoryCatServerClient` remains a test boundary only.
+- Cat Server AI is capability-gated and server-backed; no provider key or automatic apply path is
+  embedded in the APK. Standalone/offline diagnostics and configurator validation remain usable.

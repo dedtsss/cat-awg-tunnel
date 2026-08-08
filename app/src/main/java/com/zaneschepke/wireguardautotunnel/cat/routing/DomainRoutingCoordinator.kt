@@ -8,8 +8,8 @@ import com.dedtsss.catawg.core.routing.DomainMatchMode
 import com.dedtsss.catawg.core.routing.DomainNormalizer
 import com.dedtsss.catawg.core.routing.DomainResolutionStatus
 import com.dedtsss.catawg.core.routing.DomainResolver
-import com.dedtsss.catawg.core.routing.DomainRouteTarget
 import com.dedtsss.catawg.core.routing.DomainRouteRebuildDecision
+import com.dedtsss.catawg.core.routing.DomainRouteTarget
 import com.dedtsss.catawg.core.routing.DomainRoutingPlanner
 import com.dedtsss.catawg.core.routing.DomainRule
 import com.dedtsss.catawg.core.routing.DomainRuleRepository
@@ -25,7 +25,9 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
-/** Coordinates immediate, connect-time and network-change DNS refreshes with the native VPN bounce. */
+/**
+ * Coordinates immediate, connect-time and network-change DNS refreshes with the native VPN bounce.
+ */
 class DomainRoutingCoordinator(
     private val repository: DomainRuleRepository,
     private val resolver: DomainResolver,
@@ -71,7 +73,9 @@ class DomainRoutingCoordinator(
         source: DomainRuleSource = DomainRuleSource.MANUAL,
         comment: String? = null,
     ): DomainRule {
-        val domain = DomainNormalizer.fromSharedText(rawDomain) ?: throw IllegalArgumentException("Invalid domain or URL")
+        val domain =
+            DomainNormalizer.fromSharedText(rawDomain)
+                ?: throw IllegalArgumentException("Invalid domain or URL")
         val rule =
             DomainRule(
                 tunnelId = tunnelId,
@@ -87,7 +91,9 @@ class DomainRoutingCoordinator(
     }
 
     suspend fun updateAndApply(rule: DomainRule): DomainRule {
-        val normalized = DomainNormalizer.normalize(rule.domain) ?: throw IllegalArgumentException("Invalid domain")
+        val normalized =
+            DomainNormalizer.normalize(rule.domain)
+                ?: throw IllegalArgumentException("Invalid domain")
         val before = DomainRoutingPlanner.exclusions(repository.forTunnel(rule.tunnelId))
         val normalizedRule = rule.copy(domain = normalized)
         repository.upsert(normalizedRule)
@@ -102,10 +108,16 @@ class DomainRoutingCoordinator(
         rebuildIfRouteSetChanged(rule.tunnelId, before, "rule_deleted")
     }
 
-    /** Called directly from the normal tunnel-start lifecycle before VpnService.Builder.establish(). */
+    /**
+     * Called directly from the normal tunnel-start lifecycle before VpnService.Builder.establish().
+     */
     suspend fun refreshForTunnel(tunnelId: Int): List<DomainRule> = refreshRules(tunnelId)
 
-    suspend fun refreshAndRebuild(tunnelId: Int, reason: String, before: List<com.dedtsss.catawg.core.routing.RouteExclusion>? = null) {
+    suspend fun refreshAndRebuild(
+        tunnelId: Int,
+        reason: String,
+        before: List<com.dedtsss.catawg.core.routing.RouteExclusion>? = null,
+    ) {
         val initial = before ?: DomainRoutingPlanner.exclusions(repository.forTunnel(tunnelId))
         refreshRules(tunnelId)
         rebuildIfRouteSetChanged(tunnelId, initial, reason)
@@ -122,7 +134,8 @@ class DomainRoutingCoordinator(
                     DiagnosticEvent(
                         category = DiagnosticCategory.DNS,
                         severity =
-                            if (resolution.status == DomainResolutionStatus.SUCCESS) DiagnosticSeverity.INFO
+                            if (resolution.status == DomainResolutionStatus.SUCCESS)
+                                DiagnosticSeverity.INFO
                             else DiagnosticSeverity.WARNING,
                         code =
                             if (resolution.status == DomainResolutionStatus.SUCCESS) "DNS_RESOLVED"
@@ -135,7 +148,7 @@ class DomainRoutingCoordinator(
                                 "ipv6Count" to resolution.ipv6.size.toString(),
                                 "status" to resolution.status.name,
                             ),
-                        tunnelId = tunnelId,
+                        tunnelId = tunnelId.toString(),
                     )
                 )
                 merged
@@ -150,21 +163,24 @@ class DomainRoutingCoordinator(
         reason: String,
     ) {
         val after = routeProvider.exclusionsFor(tunnelId)
-        if (!DomainRouteRebuildDecision.requiresVpnRebuild(
+        if (
+            !DomainRouteRebuildDecision.requiresVpnRebuild(
                 before = before,
                 after = after,
                 tunnelIsActive = tunnelId in backend.status.first().activeTunnels,
             )
-        ) return
+        )
+            return
         val bounced = backend.bounceTunnelDevice(tunnelId, withFreshResolution = false)
         diagnostics.record(
             DiagnosticEvent(
                 category = DiagnosticCategory.ROUTE,
                 severity = if (bounced) DiagnosticSeverity.INFO else DiagnosticSeverity.ERROR,
                 code = if (bounced) "TUNNEL_BOUNCED_FOR_DOMAIN_ROUTES" else "TUNNEL_BOUNCE_FAILED",
-                summary = "Domain route update $reason ${if (bounced) "applied" else "failed to apply"}",
+                summary =
+                    "Domain route update $reason ${if (bounced) "applied" else "failed to apply"}",
                 details = mapOf("reason" to reason, "exclusionCount" to after.size.toString()),
-                tunnelId = tunnelId,
+                tunnelId = tunnelId.toString(),
             )
         )
     }

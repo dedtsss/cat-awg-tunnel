@@ -85,6 +85,10 @@
     <string name="set_primary_tunnel">Tunnel used when no preferred tunnel is configured</string>
     <string name="edit_tunnel">Edit tunnel</string>
     <string name="settings">Settings</string>
+    <string name="cat_server" translatable="false">Cat Server</string>
+    <string name="cat_server_settings_desc" translatable="false">Pair an HTTPS Cat Server and view capabilities</string>
+    <string name="cat_configurator" translatable="false">AWG Configurator</string>
+    <string name="cat_configurator_desc" translatable="false">Import, validate and compare safe candidate profiles</string>
     <string name="support">Support</string>
     <string name="junk_packet_count">Junk packet count</string>
     <string name="junk_packet_minimum_size">Junk packet minimum size</string>

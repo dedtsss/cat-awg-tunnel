@@ -32,7 +32,9 @@ enum class DiagnosticSeverity {
     ERROR,
 }
 
-/** Structured event content is intentionally string-only and sanitized at the recording boundary. */
+/**
+ * Structured event content is intentionally string-only and sanitized at the recording boundary.
+ */
 @Serializable
 data class DiagnosticEvent(
     val id: String = UUID.randomUUID().toString(),
@@ -67,7 +69,8 @@ data class Incident(
     val startAt: String,
     val endAt: String? = null,
     val severity: IncidentSeverity,
-    val status: IncidentStatus = if (endAt == null) IncidentStatus.OPEN else IncidentStatus.RESOLVED,
+    val status: IncidentStatus =
+        if (endAt == null) IncidentStatus.OPEN else IncidentStatus.RESOLVED,
     val classification: String,
     val confidence: Double,
     val eventIds: List<String>,
@@ -132,7 +135,9 @@ object DiagnosticSanitizer {
 class IncidentDetector {
     fun detect(events: List<DiagnosticEvent>, now: Instant = Instant.now()): List<Incident> {
         val ordered = events.sortedBy { it.ts }
-        val recent = ordered.filter { parseInstant(it.ts)?.isAfter(now.minus(15, ChronoUnit.MINUTES)) == true }
+        val recent = ordered.filter {
+            parseInstant(it.ts)?.isAfter(now.minus(15, ChronoUnit.MINUTES)) == true
+        }
         val detected = mutableListOf<Incident>()
 
         fun incident(
@@ -164,10 +169,12 @@ class IncidentDetector {
 
         val networkLost = recent.filter { it.code == "NETWORK_LOST" }
         val latestNetworkAvailable = recent.lastOrNull { it.code == "NETWORK_AVAILABLE" }
-        val outstandingNetworkLoss =
-            networkLost.filter { loss -> latestNetworkAvailable == null || loss.ts > latestNetworkAvailable.ts }
-        val recoveredNetworkLoss =
-            networkLost.filter { loss -> latestNetworkAvailable != null && loss.ts <= latestNetworkAvailable.ts }
+        val outstandingNetworkLoss = networkLost.filter { loss ->
+            latestNetworkAvailable == null || loss.ts > latestNetworkAvailable.ts
+        }
+        val recoveredNetworkLoss = networkLost.filter { loss ->
+            latestNetworkAvailable != null && loss.ts <= latestNetworkAvailable.ts
+        }
         if (outstandingNetworkLoss.isNotEmpty()) {
             incident(
                 classification = "UNDERLYING_NETWORK_LOST",
@@ -175,7 +182,8 @@ class IncidentDetector {
                 evidence = outstandingNetworkLoss,
                 confidence = 0.9,
                 cause = "Android reported loss of the underlying network.",
-                recommendations = listOf("Check Wi-Fi/mobile connectivity before changing tunnel settings."),
+                recommendations =
+                    listOf("Check Wi-Fi/mobile connectivity before changing tunnel settings."),
             )
         }
         if (recoveredNetworkLoss.isNotEmpty() && latestNetworkAvailable != null) {
@@ -185,7 +193,8 @@ class IncidentDetector {
                 evidence = recoveredNetworkLoss + latestNetworkAvailable,
                 confidence = 0.9,
                 cause = "Android reported a temporary underlying-network interruption.",
-                recommendations = listOf("No tunnel setting change is indicated unless interruptions repeat."),
+                recommendations =
+                    listOf("No tunnel setting change is indicated unless interruptions repeat."),
                 endAt = latestNetworkAvailable.ts,
             )
         }
@@ -196,12 +205,15 @@ class IncidentDetector {
                 evidence = networkLost,
                 confidence = 0.8,
                 cause = "Several underlying-network losses were observed in a short interval.",
-                recommendations = listOf("Check Wi-Fi/mobile stability before changing tunnel settings."),
+                recommendations =
+                    listOf("Check Wi-Fi/mobile stability before changing tunnel settings."),
                 endAt = latestNetworkAvailable?.ts,
             )
         }
 
-        val reconnectFailures = recent.filter { it.code in setOf("TUNNEL_RECONNECT_FAILED", "TUNNEL_BOUNCE_FAILED") }
+        val reconnectFailures = recent.filter {
+            it.code in setOf("TUNNEL_RECONNECT_FAILED", "TUNNEL_BOUNCE_FAILED")
+        }
         if (reconnectFailures.size >= 3) {
             incident(
                 classification = "RECONNECT_LOOP",
@@ -218,10 +230,13 @@ class IncidentDetector {
             incident(
                 classification = "TUNNEL_FAILED_TO_RECOVER",
                 severity = IncidentSeverity.CRITICAL,
-                evidence = fatalRecovery + recent.filter { it.code == "NETWORK_AVAILABLE" }.takeLast(1),
+                evidence =
+                    fatalRecovery + recent.filter { it.code == "NETWORK_AVAILABLE" }.takeLast(1),
                 confidence = 0.8,
-                cause = "An available underlying network was observed, but tunnel recovery was exhausted.",
-                recommendations = listOf("Export diagnostics and verify endpoint/configuration availability."),
+                cause =
+                    "An available underlying network was observed, but tunnel recovery was exhausted.",
+                recommendations =
+                    listOf("Export diagnostics and verify endpoint/configuration availability."),
             )
         }
 
@@ -233,7 +248,8 @@ class IncidentDetector {
                 evidence = dnsFailures,
                 confidence = 0.75,
                 cause = "Repeated DNS resolution failures were recorded.",
-                recommendations = listOf("Refresh the domain rule after checking direct-network DNS."),
+                recommendations =
+                    listOf("Refresh the domain rule after checking direct-network DNS."),
             )
         }
 
@@ -251,7 +267,8 @@ class IncidentDetector {
         return detected
     }
 
-    private fun parseInstant(value: String): Instant? = runCatching { Instant.parse(value) }.getOrNull()
+    private fun parseInstant(value: String): Instant? =
+        runCatching { Instant.parse(value) }.getOrNull()
 }
 
 class ClientDiagnosticRecorder(
@@ -268,14 +285,19 @@ class ClientDiagnosticRecorder(
         // close a short interruption even after the 15-minute detector window has rolled over.
         val existing = store.incidents(now.minus(retention), now)
         existing
-            .filter { it.status == IncidentStatus.OPEN && detected.none { candidate -> candidate.classification == it.classification } }
+            .filter {
+                it.status == IncidentStatus.OPEN &&
+                    detected.none { candidate -> candidate.classification == it.classification }
+            }
             .forEach { open ->
                 store.upsertIncident(
                     open.copy(endAt = now.toString(), status = IncidentStatus.RESOLVED)
                 )
             }
         detected.forEach { candidate ->
-            val prior = existing.firstOrNull { it.classification == candidate.classification && it.status == IncidentStatus.OPEN }
+            val prior = existing.firstOrNull {
+                it.classification == candidate.classification && it.status == IncidentStatus.OPEN
+            }
             store.upsertIncident(
                 if (prior == null) candidate
                 else candidate.copy(id = prior.id, startAt = prior.startAt)
@@ -305,7 +327,10 @@ data class DiagnosticExportManifest(
 data class DiagnosticExportBundle(val entries: Map<String, String>)
 
 object DiagnosticExportBuilder {
-    private val json = Json { prettyPrint = true; encodeDefaults = true }
+    private val json = Json {
+        prettyPrint = true
+        encodeDefaults = true
+    }
 
     fun build(
         events: List<DiagnosticEvent>,
@@ -331,7 +356,8 @@ object DiagnosticExportBuilder {
             )
         val eventsJsonl = cleanedEvents.joinToString("\n") { json.encodeToString(it) }
         val networkJsonl =
-            cleanedEvents.filter { it.category == DiagnosticCategory.NETWORK }
+            cleanedEvents
+                .filter { it.category == DiagnosticCategory.NETWORK }
                 .joinToString("\n") { json.encodeToString(it) }
         return DiagnosticExportBundle(
             mapOf(

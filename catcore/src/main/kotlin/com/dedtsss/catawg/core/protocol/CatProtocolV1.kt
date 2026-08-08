@@ -1,6 +1,5 @@
 package com.dedtsss.catawg.core.protocol
 
-import com.dedtsss.catawg.core.configurator.ConfigProtocol
 import com.dedtsss.catawg.core.configurator.PublicConfigProfile
 import com.dedtsss.catawg.core.diagnostics.DiagnosticEvent
 import com.dedtsss.catawg.core.diagnostics.Incident
@@ -16,6 +15,7 @@ import io.ktor.client.statement.bodyAsBytes
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.json
+import java.net.URI
 import java.security.MessageDigest
 import java.security.cert.CertificateException
 import java.security.cert.X509Certificate
@@ -37,15 +37,20 @@ object CatProtocolV1 {
     const val INCIDENTS = "$API_PREFIX/incidents"
     const val DIAGNOSTIC_BUNDLE = "$API_PREFIX/diagnostics/bundle"
     const val CONFIG_VALIDATE = "$API_PREFIX/config/validate"
+    const val METRICS_COMPARE = "$API_PREFIX/metrics/compare"
     const val AI_CHAT = "$API_PREFIX/ai/chat"
 }
 
-private val CatJson = Json { ignoreUnknownKeys = true; explicitNulls = true }
+private val CatJson = Json {
+    ignoreUnknownKeys = true
+    explicitNulls = true
+}
 
 @Serializable data class EngineCapability(val supported: Boolean, val version: String? = null)
 
 /** Future server capability additions are deliberately ignored by the Android JSON parser. */
-@Serializable data class ServerFeatures(
+@Serializable
+data class ServerFeatures(
     val diagnostics: Boolean = false,
     val configManagement: Boolean = false,
     val serverRouting: Boolean = false,
@@ -53,7 +58,8 @@ private val CatJson = Json { ignoreUnknownKeys = true; explicitNulls = true }
     val aiGateway: Boolean = false,
 )
 
-@Serializable data class ServerCapabilities(
+@Serializable
+data class ServerCapabilities(
     val schemaVersion: String = CatProtocolV1.SCHEMA_VERSION,
     val serverId: String,
     val agentVersion: String,
@@ -64,26 +70,30 @@ private val CatJson = Json { ignoreUnknownKeys = true; explicitNulls = true }
     val managementApiVersion: String,
 )
 
-@Serializable data class CatHealth(
+@Serializable
+data class CatHealth(
     val schemaVersion: String = CatProtocolV1.SCHEMA_VERSION,
     val status: String,
     val agentVersion: String,
     val at: String = Instant.now().toString(),
 )
 
-@Serializable data class ConfigValidationRequest(
+@Serializable
+data class ConfigValidationRequest(
     val schemaVersion: String = CatProtocolV1.SCHEMA_VERSION,
     val publicProfile: PublicConfigProfile,
 )
 
-@Serializable data class ConfigValidationIssue(
+@Serializable
+data class ConfigValidationIssue(
     val code: String,
     val field: String? = null,
     val message: String,
     val severity: String = "ERROR",
 )
 
-@Serializable data class ConfigValidationResponse(
+@Serializable
+data class ConfigValidationResponse(
     val schemaVersion: String = CatProtocolV1.SCHEMA_VERSION,
     val valid: Boolean,
     val issues: List<ConfigValidationIssue> = emptyList(),
@@ -93,23 +103,46 @@ private val CatJson = Json { ignoreUnknownKeys = true; explicitNulls = true }
 
 @Serializable data class TimeRange(val from: String, val to: String)
 
-@Serializable data class DiagnosticUploadRequest(
+@Serializable
+data class ReliabilityMetrics(
+    val incidents: Int = 0,
+    val downtimeSeconds: Double = 0.0,
+    val reconnectEvents: Int = 0,
+    val tunnelServiceRestarts: Int = 0,
+    val rttAverageMs: Double? = null,
+    val packetLossAveragePercent: Double? = null,
+    val sampleNote: String = "",
+)
+
+@Serializable
+data class MetricsCompareResponse(
+    val changeAt: String,
+    val before: ReliabilityMetrics = ReliabilityMetrics(),
+    val after: ReliabilityMetrics = ReliabilityMetrics(),
+    val windowSeconds: Long = 0,
+)
+
+@Serializable
+data class DiagnosticUploadRequest(
     val schemaVersion: String = CatProtocolV1.SCHEMA_VERSION,
     val events: List<DiagnosticEvent>,
 )
 
 /** Server-enriched events contain authenticated deviceId; Android never sends one. */
-@Serializable data class DiagnosticUploadResponse(
+@Serializable
+data class DiagnosticUploadResponse(
     val schemaVersion: String = CatProtocolV1.SCHEMA_VERSION,
     val events: List<DiagnosticEvent>,
 )
 
-@Serializable data class IncidentsResponse(
+@Serializable
+data class IncidentsResponse(
     val schemaVersion: String = CatProtocolV1.SCHEMA_VERSION,
     val incidents: List<Incident> = emptyList(),
 )
 
-@Serializable data class PairingStartResponse(
+@Serializable
+data class PairingStartResponse(
     val schemaVersion: String = CatProtocolV1.SCHEMA_VERSION,
     val pairingId: String,
     val code: String,
@@ -117,9 +150,11 @@ private val CatJson = Json { ignoreUnknownKeys = true; explicitNulls = true }
     val certificateFingerprint: String,
 )
 
-@Serializable data class PairingCompleteRequest(val pairingId: String, val code: String, val deviceName: String)
+@Serializable
+data class PairingCompleteRequest(val pairingId: String, val code: String, val deviceName: String)
 
-@Serializable data class PairedDevice(
+@Serializable
+data class PairedDevice(
     val id: String,
     val name: String,
     val createdAt: String,
@@ -127,14 +162,19 @@ private val CatJson = Json { ignoreUnknownKeys = true; explicitNulls = true }
     val revokedAt: String? = null,
 )
 
-@Serializable data class PairingCompleteResponse(
+@Serializable
+data class PairingCompleteResponse(
     val schemaVersion: String = CatProtocolV1.SCHEMA_VERSION,
     val device: PairedDevice,
     val deviceToken: String,
     val certificateFingerprint: String,
-)
+) {
+    override fun toString(): String =
+        "PairingCompleteResponse(schemaVersion=$schemaVersion, device=$device, deviceToken=[REDACTED], certificateFingerprint=$certificateFingerprint)"
+}
 
-@Serializable data class CatAiChatRequest(
+@Serializable
+data class CatAiChatRequest(
     val schemaVersion: String = CatProtocolV1.SCHEMA_VERSION,
     val message: String,
     val incidentId: String? = null,
@@ -142,7 +182,8 @@ private val CatJson = Json { ignoreUnknownKeys = true; explicitNulls = true }
     val memoryEnabled: Boolean = false,
 )
 
-@Serializable data class CatAiChatResponse(
+@Serializable
+data class CatAiChatResponse(
     val schemaVersion: String = CatProtocolV1.SCHEMA_VERSION,
     val message: String,
     val recommendations: List<String> = emptyList(),
@@ -151,129 +192,245 @@ private val CatJson = Json { ignoreUnknownKeys = true; explicitNulls = true }
 )
 
 /** Bootstrap material must be obtained out of band; it is not persisted by this client. */
-data class PairingBootstrap(val certificateFingerprint: String, val bootstrapToken: String)
+data class PairingBootstrap(val certificateFingerprint: String, val bootstrapToken: String) {
+    override fun toString(): String =
+        "PairingBootstrap(certificateFingerprint=$certificateFingerprint, bootstrapToken=[REDACTED])"
+}
 
-/** Implement using Android Keystore-backed encrypted storage. No plaintext default implementation exists. */
+/**
+ * Implement using Android Keystore-backed encrypted storage. No plaintext default implementation
+ * exists.
+ */
 interface CatServerCredentialStore {
     fun read(): CatServerCredentials?
+
     fun write(credentials: CatServerCredentials)
+
     fun clear()
 }
 
-data class CatServerCredentials(val deviceToken: String, val certificateFingerprint: String, val deviceId: String)
+data class CatServerCredentials(
+    val deviceToken: String,
+    val certificateFingerprint: String,
+    val deviceId: String,
+) {
+    override fun toString(): String =
+        "CatServerCredentials(deviceToken=[REDACTED], certificateFingerprint=$certificateFingerprint, deviceId=$deviceId)"
+}
 
 interface CatServerClient {
     suspend fun health(): CatHealth
+
     suspend fun pair(deviceName: String, bootstrap: PairingBootstrap): PairingCompleteResponse
+
     suspend fun capabilities(): ServerCapabilities
+
     suspend fun postDiagnosticEvents(events: List<DiagnosticEvent>): List<DiagnosticEvent>
+
     suspend fun incidents(range: TimeRange): IncidentsResponse
+
     suspend fun diagnosticBundle(range: TimeRange): ByteArray
+
     suspend fun validateConfig(request: ConfigValidationRequest): ConfigValidationResponse
+
+    suspend fun metricsCompare(changeAt: String, windowHours: Int = 24): MetricsCompareResponse
+
     suspend fun aiChat(request: CatAiChatRequest): CatAiChatResponse?
+
     fun revokeLocalCredentials()
 }
 
 /**
- * Real Ktor client. TLS is never relaxed: a supplied SHA-256 DER-certificate fingerprint is
- * checked for every handshake and the platform hostname verifier remains enabled.
+ * Real Ktor client. TLS is never relaxed: a supplied SHA-256 DER-certificate fingerprint is checked
+ * for every handshake and the platform hostname verifier remains enabled.
  */
 class KtorCatServerClient(
     private val baseUrl: String,
     private val credentials: CatServerCredentialStore,
     private val initialCertificateFingerprint: String? = null,
 ) : CatServerClient, AutoCloseable {
-    init { require(baseUrl.startsWith("https://")) { "Cat Server requires verified HTTPS" } }
+    init {
+        require(normalizeCatServerUrl(baseUrl) == baseUrl) {
+            "Cat Server requires a normalized HTTPS URL"
+        }
+    }
 
     private fun pinnedClient(fingerprint: String): HttpClient {
         val trustManager = CertificateFingerprintTrustManager(fingerprint)
-        val sslContext = SSLContext.getInstance("TLS").apply { init(null, arrayOf(trustManager), null) }
+        val sslContext =
+            SSLContext.getInstance("TLS").apply { init(null, arrayOf(trustManager), null) }
         return HttpClient(OkHttp) {
+            expectSuccess = true
             install(ContentNegotiation) { json(CatJson) }
             engine { config { sslSocketFactory(sslContext.socketFactory, trustManager) } }
         }
     }
 
     private fun currentCredentials(): CatServerCredentials =
-        requireNotNull(credentials.read()) { "Pair with Cat Server before making authenticated requests" }
+        requireNotNull(credentials.read()) {
+            "Pair with Cat Server before making authenticated requests"
+        }
 
     private fun currentClient(): HttpClient =
         pinnedClient(currentCredentials().certificateFingerprint)
 
-    private fun bootstrapClient(bootstrap: PairingBootstrap): HttpClient = pinnedClient(bootstrap.certificateFingerprint)
+    private fun bootstrapClient(bootstrap: PairingBootstrap): HttpClient =
+        pinnedClient(bootstrap.certificateFingerprint)
 
     override suspend fun health(): CatHealth {
-        val fingerprint = credentials.read()?.certificateFingerprint ?: initialCertificateFingerprint
-            ?: error("A verified server certificate fingerprint is required before connecting")
+        val fingerprint =
+            credentials.read()?.certificateFingerprint
+                ?: initialCertificateFingerprint
+                ?: error("A verified server certificate fingerprint is required before connecting")
         return pinnedClient(fingerprint).use { it.get(baseUrl + CatProtocolV1.HEALTH).body() }
     }
 
-    override suspend fun pair(deviceName: String, bootstrap: PairingBootstrap): PairingCompleteResponse =
-        bootstrapClient(bootstrap).use { client ->
-            val start: PairingStartResponse = client.post(baseUrl + CatProtocolV1.PAIRING_START) {
-                header("X-Cat-Bootstrap-Token", bootstrap.bootstrapToken)
-            }.body()
-            require(sameFingerprint(start.certificateFingerprint, bootstrap.certificateFingerprint)) {
-                "Pairing response certificate identity differs from verified bootstrap material"
+    override suspend fun pair(
+        deviceName: String,
+        bootstrap: PairingBootstrap,
+    ): PairingCompleteResponse =
+        bootstrap
+            .copy(
+                certificateFingerprint =
+                    normalizeCertificateFingerprint(bootstrap.certificateFingerprint)
+            )
+            .let { normalized ->
+                bootstrapClient(normalized).use { client ->
+                    val start: PairingStartResponse =
+                        client
+                            .post(baseUrl + CatProtocolV1.PAIRING_START) {
+                                header("X-Cat-Bootstrap-Token", normalized.bootstrapToken)
+                            }
+                            .body()
+                    require(
+                        sameFingerprint(
+                            start.certificateFingerprint,
+                            normalized.certificateFingerprint,
+                        )
+                    ) {
+                        "Pairing response certificate identity differs from verified bootstrap material"
+                    }
+                    val completed: PairingCompleteResponse =
+                        client
+                            .post(baseUrl + CatProtocolV1.PAIRING_COMPLETE) {
+                                contentType(ContentType.Application.Json)
+                                setBody(
+                                    PairingCompleteRequest(start.pairingId, start.code, deviceName)
+                                )
+                            }
+                            .body()
+                    require(
+                        sameFingerprint(
+                            completed.certificateFingerprint,
+                            normalized.certificateFingerprint,
+                        )
+                    ) {
+                        "Pairing completion certificate identity differs from verified bootstrap material"
+                    }
+                    credentials.write(
+                        CatServerCredentials(
+                            completed.deviceToken,
+                            completed.certificateFingerprint,
+                            completed.device.id,
+                        )
+                    )
+                    completed
+                }
             }
-            val completed: PairingCompleteResponse = client.post(baseUrl + CatProtocolV1.PAIRING_COMPLETE) {
-                contentType(ContentType.Application.Json)
-                setBody(PairingCompleteRequest(start.pairingId, start.code, deviceName))
-            }.body()
-            require(sameFingerprint(completed.certificateFingerprint, bootstrap.certificateFingerprint)) {
-                "Pairing completion certificate identity differs from verified bootstrap material"
-            }
-            credentials.write(CatServerCredentials(completed.deviceToken, completed.certificateFingerprint, completed.device.id))
-            completed
-        }
 
     override suspend fun capabilities(): ServerCapabilities = authenticated { client, token ->
-        client.get(baseUrl + CatProtocolV1.CAPABILITIES) { header("Authorization", "Bearer $token") }.body()
+        client
+            .get(baseUrl + CatProtocolV1.CAPABILITIES) { header("Authorization", "Bearer $token") }
+            .body()
     }
 
-    override suspend fun postDiagnosticEvents(events: List<DiagnosticEvent>): List<DiagnosticEvent> = authenticated { client, token ->
+    override suspend fun postDiagnosticEvents(
+        events: List<DiagnosticEvent>
+    ): List<DiagnosticEvent> = authenticated { client, token ->
         require(events.isNotEmpty()) { "At least one diagnostic event is required" }
         require(events.size <= 200) { "At most 200 diagnostic events may be uploaded in one batch" }
-        require(events.all { it.source.name == "CLIENT" }) { "Android may upload CLIENT events only" }
-        client.post(baseUrl + CatProtocolV1.DIAGNOSTIC_EVENTS) {
-            header("Authorization", "Bearer $token")
-            contentType(ContentType.Application.Json)
-            setBody(DiagnosticUploadRequest(events = events))
-        }.body<DiagnosticUploadResponse>().events
+        require(events.all { it.source.name == "CLIENT" }) {
+            "Android may upload CLIENT events only"
+        }
+        client
+            .post(baseUrl + CatProtocolV1.DIAGNOSTIC_EVENTS) {
+                header("Authorization", "Bearer $token")
+                contentType(ContentType.Application.Json)
+                setBody(DiagnosticUploadRequest(events = events))
+            }
+            .body<DiagnosticUploadResponse>()
+            .events
     }
 
-    override suspend fun incidents(range: TimeRange): IncidentsResponse = authenticated { client, token ->
-        client.get(baseUrl + CatProtocolV1.INCIDENTS) {
-            header("Authorization", "Bearer $token")
-            url { parameters.append("from", range.from); parameters.append("to", range.to) }
-        }.body()
-    }
+    override suspend fun incidents(range: TimeRange): IncidentsResponse =
+        authenticated { client, token ->
+            client
+                .get(baseUrl + CatProtocolV1.INCIDENTS) {
+                    header("Authorization", "Bearer $token")
+                    url {
+                        parameters.append("from", range.from)
+                        parameters.append("to", range.to)
+                    }
+                }
+                .body()
+        }
 
-    override suspend fun diagnosticBundle(range: TimeRange): ByteArray = authenticated { client, token ->
-        client.get(baseUrl + CatProtocolV1.DIAGNOSTIC_BUNDLE) {
-            header("Authorization", "Bearer $token")
-            url { parameters.append("from", range.from); parameters.append("to", range.to) }
-        }.bodyAsBytes()
-    }
+    override suspend fun diagnosticBundle(range: TimeRange): ByteArray =
+        authenticated { client, token ->
+            client
+                .get(baseUrl + CatProtocolV1.DIAGNOSTIC_BUNDLE) {
+                    header("Authorization", "Bearer $token")
+                    url {
+                        parameters.append("from", range.from)
+                        parameters.append("to", range.to)
+                    }
+                }
+                .bodyAsBytes()
+        }
 
-    override suspend fun validateConfig(request: ConfigValidationRequest): ConfigValidationResponse = authenticated { client, token ->
-        require(request.publicProfile.parameters.keys.none(::isSecretBearingKey)) {
+    override suspend fun validateConfig(
+        request: ConfigValidationRequest
+    ): ConfigValidationResponse = authenticated { client, token ->
+        require(request.publicProfile.parameters.keys.none(::isSecretBearingConfigKey)) {
             "Generic Cat config validation accepts only a public, non-secret profile"
         }
-        client.post(baseUrl + CatProtocolV1.CONFIG_VALIDATE) {
-            header("Authorization", "Bearer $token")
-            contentType(ContentType.Application.Json)
-            setBody(request)
-        }.body()
+        client
+            .post(baseUrl + CatProtocolV1.CONFIG_VALIDATE) {
+                header("Authorization", "Bearer $token")
+                contentType(ContentType.Application.Json)
+                setBody(request)
+            }
+            .body()
     }
 
-    override suspend fun aiChat(request: CatAiChatRequest): CatAiChatResponse? = authenticated { client, token ->
-        client.post(baseUrl + CatProtocolV1.AI_CHAT) {
-            header("Authorization", "Bearer $token")
-            contentType(ContentType.Application.Json)
-            setBody(request)
-        }.body()
+    override suspend fun metricsCompare(
+        changeAt: String,
+        windowHours: Int,
+    ): MetricsCompareResponse = authenticated { client, token ->
+        require(windowHours in 1..168) {
+            "Metrics comparison window must be between 1 and 168 hours"
+        }
+        client
+            .get(baseUrl + CatProtocolV1.METRICS_COMPARE) {
+                header("Authorization", "Bearer $token")
+                url {
+                    parameters.append("changeAt", changeAt)
+                    parameters.append("windowHours", windowHours.toString())
+                }
+            }
+            .body()
     }
+
+    override suspend fun aiChat(request: CatAiChatRequest): CatAiChatResponse? =
+        authenticated { client, token ->
+            client
+                .post(baseUrl + CatProtocolV1.AI_CHAT) {
+                    header("Authorization", "Bearer $token")
+                    contentType(ContentType.Application.Json)
+                    setBody(request)
+                }
+                .body()
+        }
 
     private suspend fun <T> authenticated(block: suspend (HttpClient, String) -> T): T {
         val stored = currentCredentials()
@@ -281,50 +438,138 @@ class KtorCatServerClient(
     }
 
     override fun revokeLocalCredentials() = credentials.clear()
+
     override fun close() = Unit
 }
 
 private fun sameFingerprint(left: String, right: String): Boolean =
-    left.removePrefix("sha256:").lowercase() == right.removePrefix("sha256:").lowercase()
+    runCatching { normalizeCertificateFingerprint(left) == normalizeCertificateFingerprint(right) }
+        .getOrDefault(false)
 
-private fun isSecretBearingKey(key: String): Boolean {
+fun isSecretBearingConfigKey(key: String): Boolean {
     val normalized = key.lowercase().filter(Char::isLetterOrDigit)
-    return listOf("privatekey", "presharedkey", "password", "token", "secret", "apikey", "authorization")
+    return listOf(
+            "privatekey",
+            "presharedkey",
+            "password",
+            "token",
+            "secret",
+            "apikey",
+            "authorization",
+        )
         .any(normalized::contains)
 }
 
+/** Canonical form used for comparison, persistence and TLS pinning. */
+fun normalizeCertificateFingerprint(value: String): String {
+    val withoutPrefix = value.trim().replace(Regex("(?i)^sha[- ]?256\\s*:\\s*"), "")
+    val compact = withoutPrefix.filterNot { it == ':' || it == '-' || it.isWhitespace() }
+    require(compact.length == 64 && compact.all { it in "0123456789abcdefABCDEF" }) {
+        "Certificate fingerprint must be a SHA-256 value with 64 hexadecimal characters"
+    }
+    return "sha256:${compact.lowercase()}"
+}
+
+fun displayCertificateFingerprint(value: String): String =
+    normalizeCertificateFingerprint(value).removePrefix("sha256:").chunked(2).joinToString(":") {
+        it.uppercase()
+    }
+
+/** Management URLs are deliberately restricted to HTTPS origins without hidden path/query state. */
+fun normalizeCatServerUrl(value: String): String {
+    val candidate = value.trim().removeSuffix("/")
+    val uri =
+        runCatching { URI(candidate) }
+            .getOrElse { throw IllegalArgumentException("Cat Server URL is invalid") }
+    require(uri.scheme.equals("https", ignoreCase = true)) {
+        "Cat Server requires HTTPS; HTTP management is disabled"
+    }
+    require(!uri.host.isNullOrBlank() && uri.userInfo == null) {
+        "Cat Server URL must contain a hostname without credentials"
+    }
+    require(uri.path.isNullOrBlank() || uri.path == "/") {
+        "Cat Server URL must be the server origin"
+    }
+    require(uri.query == null && uri.fragment == null) {
+        "Cat Server URL must not contain query or fragment data"
+    }
+    return "https://${uri.rawAuthority}"
+}
+
 private class CertificateFingerprintTrustManager(expectedFingerprint: String) : X509TrustManager {
-    private val expected = expectedFingerprint.removePrefix("sha256:").lowercase()
+    private val expected =
+        normalizeCertificateFingerprint(expectedFingerprint).removePrefix("sha256:")
+
     override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String) = Unit
+
     override fun getAcceptedIssuers(): Array<X509Certificate> = emptyArray()
+
     override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String) {
-        val certificate = chain.firstOrNull() ?: throw CertificateException("Server did not provide a certificate")
-        val actual = MessageDigest.getInstance("SHA-256").digest(certificate.encoded).joinToString("") { "%02x".format(it) }
-        if (actual != expected) throw CertificateException("Cat Server certificate fingerprint mismatch")
+        val certificate =
+            chain.firstOrNull()
+                ?: throw CertificateException("Server did not provide a certificate")
+        val actual =
+            MessageDigest.getInstance("SHA-256").digest(certificate.encoded).joinToString("") {
+                "%02x".format(it)
+            }
+        if (actual != expected)
+            throw CertificateException("Cat Server certificate fingerprint mismatch")
     }
 }
 
 /** Test-only boundary; production DI must use [KtorCatServerClient] with encrypted credentials. */
 class InMemoryCatServerClient(
-    private val advertisedCapabilities: ServerCapabilities = ServerCapabilities(
-        serverId = "local-mock", agentVersion = "0", os = "mock", architecture = "mock",
-        engines = mapOf("wireguard" to EngineCapability(true), "awg2" to EngineCapability(true), "awg3" to EngineCapability(false)),
-        features = ServerFeatures(diagnostics = true), managementApiVersion = "v1",
-    ),
+    private val advertisedCapabilities: ServerCapabilities =
+        ServerCapabilities(
+            serverId = "local-mock",
+            agentVersion = "0",
+            os = "mock",
+            architecture = "mock",
+            engines =
+                mapOf(
+                    "wireguard" to EngineCapability(true),
+                    "awg2" to EngineCapability(true),
+                    "awg3" to EngineCapability(false),
+                ),
+            features = ServerFeatures(diagnostics = true),
+            managementApiVersion = "v1",
+        )
 ) : CatServerClient {
     private val recordedEvents = mutableListOf<DiagnosticEvent>()
+
     override suspend fun health() = CatHealth(status = "ok", agentVersion = "0")
-    override suspend fun pair(deviceName: String, bootstrap: PairingBootstrap): PairingCompleteResponse =
-        PairingCompleteResponse(device = PairedDevice("mock-device", deviceName, Instant.now().toString()), deviceToken = "mock", certificateFingerprint = bootstrap.certificateFingerprint)
+
+    override suspend fun pair(
+        deviceName: String,
+        bootstrap: PairingBootstrap,
+    ): PairingCompleteResponse =
+        PairingCompleteResponse(
+            device = PairedDevice("mock-device", deviceName, Instant.now().toString()),
+            deviceToken = "mock",
+            certificateFingerprint = bootstrap.certificateFingerprint,
+        )
+
     override suspend fun capabilities() = advertisedCapabilities
-    override suspend fun postDiagnosticEvents(events: List<DiagnosticEvent>): List<DiagnosticEvent> = events.also { recordedEvents += it }
+
+    override suspend fun postDiagnosticEvents(
+        events: List<DiagnosticEvent>
+    ): List<DiagnosticEvent> = events.also { recordedEvents += it }
+
     override suspend fun incidents(range: TimeRange) = IncidentsResponse()
+
     override suspend fun diagnosticBundle(range: TimeRange) = ByteArray(0)
-    override suspend fun validateConfig(request: ConfigValidationRequest) = ConfigValidationResponse(
-        valid = request.publicProfile.validationSummary.valid,
-        publicProfile = request.publicProfile,
-        capabilitySatisfied = true,
-    )
+
+    override suspend fun validateConfig(request: ConfigValidationRequest) =
+        ConfigValidationResponse(
+            valid = request.publicProfile.validationSummary.valid,
+            publicProfile = request.publicProfile,
+            capabilitySatisfied = true,
+        )
+
+    override suspend fun metricsCompare(changeAt: String, windowHours: Int) =
+        MetricsCompareResponse(changeAt)
+
     override suspend fun aiChat(request: CatAiChatRequest): CatAiChatResponse? = null
+
     override fun revokeLocalCredentials() = Unit
 }

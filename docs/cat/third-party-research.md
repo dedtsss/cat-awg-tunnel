@@ -18,4 +18,9 @@ Research was performed on 2026-08-08 with GitHub repository metadata and current
 | [ks-tool/awg-admin](https://github.com/ks-tool/awg-admin) | Apache-2.0, current GitHub search result | Additional management/configurator reference; not used as a donor. |
 | [Skiro1/warp-awg-gen](https://github.com/Skiro1/warp-awg-gen) | MIT, current GitHub search result | Generator behavior reference only; no code copied. |
 
+SSH bootstrap was considered as a separate transport concern. No SSH dependency is added to the
+APK: the shipped flow is a guided, operator-controlled server installer fallback followed by
+HTTPS pairing. This keeps host-key verification, remote privilege boundaries and firewall changes
+out of the Android product until a dedicated maintained transport and UX are reviewed.
+
 Repositories with no declared/other/GPL/AGPL license from the search results were excluded as implementation donors. The Cat configurator contains independently written deterministic validation based on the existing upstream editor behavior and documented capability gating. It does not add unrelated network-evasion functionality.

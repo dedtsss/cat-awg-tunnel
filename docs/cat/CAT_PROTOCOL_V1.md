@@ -13,8 +13,13 @@ The protocol uses `/api/v1`, camelCase JSON, opaque string IDs, `schemaVersion: 
 | Diagnostics | `postDiagnosticEvents()` sends the canonical batch envelope; Android sends only `CLIENT` events and string `tunnelId` |
 | Incidents | `IncidentsResponse` keeps the versioned server envelope |
 | Config | `ConfigValidationRequest` sends a sanitized `PublicConfigProfile`, never raw config/private keys/PSKs |
+| Reliability | `metricsCompare()` reads descriptive before/after metrics from `/metrics/compare` |
 | AI | optional `CatAiChatRequest/Response`; response is candidate-only and `applied=false` |
 
-`KtorCatServerClient` is a real network boundary. Its `CatServerCredentialStore` must be implemented with Android Keystore-backed encrypted storage by the application integration; no plaintext storage implementation is provided. Initial bootstrap accepts only out-of-band verified certificate fingerprint material and the client retains hostname checking—there is no trust-all path.
+`CatBootstrapPayload`/`CatBootstrapParser` provide text, JSON and `cat://pair` copy/paste/QR
+material. `AndroidCatServerClient` is the production adapter and
+`AndroidKeystoreCatServerCredentialStore` stores only the encrypted bearer credential. Initial
+bootstrap accepts only out-of-band verified certificate fingerprint material; hostname checking
+stays enabled and there is no trust-all path.
 
 Physical-device and real-VPS validation remain separate deployment checks. The JVM suite proves models and cross-contract fixtures; server tests exercise the local live API and bundle sanitizer.

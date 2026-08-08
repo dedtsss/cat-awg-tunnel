@@ -10,8 +10,8 @@ import kotlinx.serialization.json.Json
 
 /**
  * A durable logical routing rule. DNS answers are deliberately stored separately from the logical
- * suffix rule: DNS cannot enumerate all possible subdomains, but observed answers can be applied
- * to Android's IP based VPN route table.
+ * suffix rule: DNS cannot enumerate all possible subdomains, but observed answers can be applied to
+ * Android's IP based VPN route table.
  */
 @Serializable
 data class DomainRule(
@@ -64,7 +64,9 @@ data class ResolvedIp(
     val address: String,
     val firstSeenAt: String,
     val lastSeenAt: String,
-    /** A historical address is retained for diagnostics but never added to the VPN exclusion set. */
+    /**
+     * A historical address is retained for diagnostics but never added to the VPN exclusion set.
+     */
     val isCurrent: Boolean = true,
 )
 
@@ -106,12 +108,16 @@ interface DomainRouteProvider {
 data class RouteExclusion(val address: String, val prefixLength: Int, val ruleId: String)
 
 object DomainNormalizer {
-    private val urlRegex = Regex("""(?i)(https?://[^\s]+|//[^\s]+|(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}(?:/[^\s]*)?)""")
+    private val urlRegex =
+        Regex(
+            """(?i)(https?://[^\s]+|//[^\s]+|(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}(?:/[^\s]*)?)"""
+        )
     private val ipv4Regex = Regex("""^\d{1,3}(?:\.\d{1,3}){3}$""")
 
     /** Returns an ASCII hostname, never a URL, and does not silently strip a meaningful host. */
     fun normalize(input: String?): String? {
-        val raw = input?.trim()?.trim('"', '\'', '(', ')', '[', ']', '{', '}', ',', ';') ?: return null
+        val raw =
+            input?.trim()?.trim('"', '\'', '(', ')', '[', ']', '{', '}', ',', ';') ?: return null
         if (raw.isBlank()) return null
 
         val candidate =
@@ -123,20 +129,26 @@ object DomainNormalizer {
                         else -> raw.substringBefore('/').substringBefore('?').substringBefore('#')
                     }
                 }
-                .getOrNull()
-                ?: raw.substringBefore('/').substringBefore('?').substringBefore('#')
+                .getOrNull() ?: raw.substringBefore('/').substringBefore('?').substringBefore('#')
 
         val host = candidate.trim().trimEnd('.').removePrefix("[").removeSuffix("]")
         if (host.isBlank() || host.contains(':') || ipv4Regex.matches(host)) return null
-        val ascii = runCatching { IDN.toASCII(host, IDN.USE_STD3_ASCII_RULES).lowercase() }.getOrNull() ?: return null
-        if (ascii.length !in 1..253 || ascii.startsWith('.') || ascii.endsWith('.') || ".." in ascii) return null
+        val ascii =
+            runCatching { IDN.toASCII(host, IDN.USE_STD3_ASCII_RULES).lowercase() }.getOrNull()
+                ?: return null
+        if (
+            ascii.length !in 1..253 || ascii.startsWith('.') || ascii.endsWith('.') || ".." in ascii
+        )
+            return null
         if (ascii.split('.').any { it.isEmpty() || it.length > 63 }) return null
         return ascii
     }
 
     /** Handles Chrome/Firefox shared URL, a bare domain, and text that contains either one. */
     fun fromSharedText(text: String?): String? {
-        normalize(text)?.let { return it }
+        normalize(text)?.let {
+            return it
+        }
         val candidate = text?.let { urlRegex.find(it)?.value } ?: return null
         return normalize(candidate)
     }
@@ -147,7 +159,8 @@ object DomainRuleMatcher {
         val normalized = DomainNormalizer.normalize(hostname) ?: return false
         return when (rule.matchMode) {
             DomainMatchMode.EXACT -> normalized == rule.domain
-            DomainMatchMode.SUFFIX -> normalized == rule.domain || normalized.endsWith(".${rule.domain}")
+            DomainMatchMode.SUFFIX ->
+                normalized == rule.domain || normalized.endsWith(".${rule.domain}")
         }
     }
 
@@ -171,9 +184,11 @@ object DomainRoutingPlanner {
             .filter { it.enabled && it.routeTarget == DomainRouteTarget.LOCAL_DIRECT }
             .flatMap { rule ->
                 sequence {
-                    rule.resolvedIpv4.filter { it.isCurrent }
+                    rule.resolvedIpv4
+                        .filter { it.isCurrent }
                         .forEach { yield(RouteExclusion(it.address, 32, rule.id)) }
-                    rule.resolvedIpv6.filter { it.isCurrent }
+                    rule.resolvedIpv6
+                        .filter { it.isCurrent }
                         .forEach { yield(RouteExclusion(it.address, 128, rule.id)) }
                 }
             }
@@ -183,16 +198,26 @@ object DomainRoutingPlanner {
     }
 
     /** Retains an observed history while constraining it for on-device diagnostics storage. */
-    fun mergeResolution(rule: DomainRule, resolution: DomainResolution, maxHistoryPerFamily: Int = 32): DomainRule {
+    fun mergeResolution(
+        rule: DomainRule,
+        resolution: DomainResolution,
+        maxHistoryPerFamily: Int = 32,
+    ): DomainRule {
         require(maxHistoryPerFamily > 0)
         val now = resolution.resolvedAt
         fun merge(existing: List<ResolvedIp>, observed: List<String>): List<ResolvedIp> {
-            val currentAnswers = observed.map(String::trim).filter(String::isNotBlank).distinct().toSet()
+            val currentAnswers =
+                observed.map(String::trim).filter(String::isNotBlank).distinct().toSet()
             val byAddress = existing.associateBy { it.address }.toMutableMap()
             // A failed lookup must not silently remove the last usable direct-route cache. Empty
             // and successful answers are authoritative; failed/timeout answers are not.
-            if (resolution.status == DomainResolutionStatus.SUCCESS || resolution.status == DomainResolutionStatus.EMPTY) {
-                byAddress.replaceAll { address, current -> current.copy(isCurrent = address in currentAnswers) }
+            if (
+                resolution.status == DomainResolutionStatus.SUCCESS ||
+                    resolution.status == DomainResolutionStatus.EMPTY
+            ) {
+                byAddress.replaceAll { address, current ->
+                    current.copy(isCurrent = address in currentAnswers)
+                }
             }
             currentAnswers.forEach { address ->
                 val current = byAddress[address]
@@ -201,7 +226,10 @@ object DomainRoutingPlanner {
                     else current.copy(lastSeenAt = now, isCurrent = true)
             }
             return byAddress.values
-                .sortedWith(compareByDescending<ResolvedIp> { it.isCurrent }.thenByDescending { it.lastSeenAt })
+                .sortedWith(
+                    compareByDescending<ResolvedIp> { it.isCurrent }
+                        .thenByDescending { it.lastSeenAt }
+                )
                 .take(maxHistoryPerFamily)
         }
         return rule.copy(
@@ -214,7 +242,11 @@ object DomainRoutingPlanner {
 }
 
 @Serializable
-data class SharedIpConflict(val address: String, val ruleIds: List<String>, val domains: List<String>)
+data class SharedIpConflict(
+    val address: String,
+    val ruleIds: List<String>,
+    val domains: List<String>,
+)
 
 object SharedIpIndex {
     fun conflicts(rules: Iterable<DomainRule>): List<SharedIpConflict> {
@@ -248,7 +280,8 @@ object DomainRouteRebuildDecision {
         tunnelIsActive: Boolean,
     ): Boolean =
         tunnelIsActive &&
-            before.map { it.address to it.prefixLength }.toSet() != after.map { it.address to it.prefixLength }.toSet()
+            before.map { it.address to it.prefixLength }.toSet() !=
+                after.map { it.address to it.prefixLength }.toSet()
 }
 
 @Serializable
@@ -289,9 +322,11 @@ object DomainDiagnostics {
         val cachedIpv4 = rule?.resolvedIpv4.orEmpty().filter { it.isCurrent }.map { it.address }
         val cachedIpv6 = rule?.resolvedIpv6.orEmpty().filter { it.isCurrent }.map { it.address }
         val ipv4 =
-            if (useCurrent?.status == DomainResolutionStatus.SUCCESS) useCurrent.ipv4 else cachedIpv4
+            if (useCurrent?.status == DomainResolutionStatus.SUCCESS) useCurrent.ipv4
+            else cachedIpv4
         val ipv6 =
-            if (useCurrent?.status == DomainResolutionStatus.SUCCESS) useCurrent.ipv6 else cachedIpv6
+            if (useCurrent?.status == DomainResolutionStatus.SUCCESS) useCurrent.ipv6
+            else cachedIpv6
         fun describe(entries: List<String>): List<DiagnosedAddress> =
             entries.distinct().map { address ->
                 val target = rule?.routeTarget ?: DomainRouteTarget.DEFAULT_TUNNEL
@@ -300,7 +335,8 @@ object DomainDiagnostics {
                     route = target,
                     ruleId = rule?.id,
                     ruleDomain = rule?.domain,
-                    sharedWithDomains = conflicts[address]?.domains.orEmpty().filter { it != rule?.domain },
+                    sharedWithDomains =
+                        conflicts[address]?.domains.orEmpty().filter { it != rule?.domain },
                 )
             }
         val last =
@@ -308,12 +344,16 @@ object DomainDiagnostics {
                 ?: related.maxOfOrNull { it.lastResolvedAt ?: "" }?.ifBlank { null }
         val stale =
             if (useCurrent?.status == DomainResolutionStatus.SUCCESS) false
-            else last?.let { runCatching { Instant.parse(it).plusSeconds(staleAfterSeconds).isBefore(now) }.getOrDefault(true) }
-                ?: true
+            else
+                last?.let {
+                    runCatching { Instant.parse(it).plusSeconds(staleAfterSeconds).isBefore(now) }
+                        .getOrDefault(true)
+                } ?: true
         val cachedAddresses = (cachedIpv4 + cachedIpv6).toSet()
         val currentAddresses = (useCurrent?.ipv4.orEmpty() + useCurrent?.ipv6.orEmpty()).toSet()
         val changed =
-            (useCurrent?.status == DomainResolutionStatus.SUCCESS && cachedAddresses != currentAddresses) ||
+            (useCurrent?.status == DomainResolutionStatus.SUCCESS &&
+                cachedAddresses != currentAddresses) ||
                 related.any { ruleEntry ->
                     (ruleEntry.resolvedIpv4 + ruleEntry.resolvedIpv6).any { !it.isCurrent }
                 }
@@ -341,45 +381,62 @@ data class DomainRuleExport(
 }
 
 object DomainRuleCodec {
-    private val json = Json { ignoreUnknownKeys = true; prettyPrint = true; encodeDefaults = true }
+    private val json = Json {
+        ignoreUnknownKeys = true
+        prettyPrint = true
+        encodeDefaults = true
+    }
 
-    fun toJson(rules: List<DomainRule>): String = json.encodeToString(DomainRuleExport(rules = rules))
+    fun toJson(rules: List<DomainRule>): String =
+        json.encodeToString(DomainRuleExport(rules = rules))
 
-    fun fromJson(value: String): List<DomainRule> = json.decodeFromString<DomainRuleExport>(value).rules
+    fun fromJson(value: String): List<DomainRule> =
+        json.decodeFromString<DomainRuleExport>(value).rules
 
     /** TXT is intentionally a simple portable list; JSON is the lossless metadata format. */
-    fun toTxt(rules: List<DomainRule>): String =
-        buildString {
-            appendLine("# Cat AWG Tunnel domain rules; JSON preserves metadata and DNS history.")
-            rules.forEach { rule ->
-                append(rule.domain)
-                append('\t')
-                append(rule.matchMode.name)
-                append('\t')
-                append(rule.routeTarget.name)
-                append('\t')
-                append(rule.enabled)
-                appendLine()
-            }
+    fun toTxt(rules: List<DomainRule>): String = buildString {
+        appendLine("# Cat AWG Tunnel domain rules; JSON preserves metadata and DNS history.")
+        rules.forEach { rule ->
+            append(rule.domain)
+            append('\t')
+            append(rule.matchMode.name)
+            append('\t')
+            append(rule.routeTarget.name)
+            append('\t')
+            append(rule.enabled)
+            appendLine()
         }
+    }
 
-    fun fromTxt(value: String, tunnelId: Int, source: DomainRuleSource = DomainRuleSource.IMPORT): List<DomainRule> =
-        value.lineSequence().mapNotNull { line ->
-            val trimmed = line.trim()
-            if (trimmed.isBlank() || trimmed.startsWith("#")) return@mapNotNull null
-            val fields = trimmed.split('\t')
-            val domain = DomainNormalizer.normalize(fields.firstOrNull()) ?: return@mapNotNull null
-            DomainRule(
-                tunnelId = tunnelId,
-                domain = domain,
-                matchMode = fields.getOrNull(1)?.let { runCatching { DomainMatchMode.valueOf(it) }.getOrNull() }
-                    ?: DomainMatchMode.SUFFIX,
-                routeTarget = fields.getOrNull(2)?.let { runCatching { DomainRouteTarget.valueOf(it) }.getOrNull() }
-                    ?: DomainRouteTarget.LOCAL_DIRECT,
-                enabled = fields.getOrNull(3)?.toBooleanStrictOrNull() ?: true,
-                source = source,
-            )
-        }.toList()
+    fun fromTxt(
+        value: String,
+        tunnelId: Int,
+        source: DomainRuleSource = DomainRuleSource.IMPORT,
+    ): List<DomainRule> =
+        value
+            .lineSequence()
+            .mapNotNull { line ->
+                val trimmed = line.trim()
+                if (trimmed.isBlank() || trimmed.startsWith("#")) return@mapNotNull null
+                val fields = trimmed.split('\t')
+                val domain =
+                    DomainNormalizer.normalize(fields.firstOrNull()) ?: return@mapNotNull null
+                DomainRule(
+                    tunnelId = tunnelId,
+                    domain = domain,
+                    matchMode =
+                        fields.getOrNull(1)?.let {
+                            runCatching { DomainMatchMode.valueOf(it) }.getOrNull()
+                        } ?: DomainMatchMode.SUFFIX,
+                    routeTarget =
+                        fields.getOrNull(2)?.let {
+                            runCatching { DomainRouteTarget.valueOf(it) }.getOrNull()
+                        } ?: DomainRouteTarget.LOCAL_DIRECT,
+                    enabled = fields.getOrNull(3)?.toBooleanStrictOrNull() ?: true,
+                    source = source,
+                )
+            }
+            .toList()
 }
 
 data class ShareTargetCandidate(val domain: String, val rawText: String)

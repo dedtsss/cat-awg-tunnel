@@ -76,7 +76,8 @@ object AwgConfigSchema {
             "I4",
             "I5",
         )
-    val peerFields = setOf("PublicKey", "PresharedKey", "AllowedIPs", "Endpoint", "PersistentKeepalive")
+    val peerFields =
+        setOf("PublicKey", "PresharedKey", "AllowedIPs", "Endpoint", "PersistentKeepalive")
 }
 
 @Serializable
@@ -104,27 +105,29 @@ data class PublicConfigProfile(
 )
 
 @Serializable
-data class PublicValidationSummary(
-    val valid: Boolean,
-    val issueCodes: List<String> = emptyList(),
-)
+data class PublicValidationSummary(val valid: Boolean, val issueCodes: List<String> = emptyList())
 
 fun ConfigProfile.toPublic(): PublicConfigProfile {
     val publicParameters =
         document.interfaceValues.filterKeys(::isPublicConfigKey) +
-            document.peers.flatMapIndexed { index, peer ->
-                peer.filterKeys(::isPublicConfigKey).map { (key, value) -> "peer[$index].$key" to value }
-            }.toMap()
+            document.peers
+                .flatMapIndexed { index, peer ->
+                    peer.filterKeys(::isPublicConfigKey).map { (key, value) ->
+                        "peer[$index].$key" to value
+                    }
+                }
+                .toMap()
     return PublicConfigProfile(
         id = id,
         name = name,
         protocol = protocol,
         parameters = publicParameters,
         capabilityRequirements = capabilityRequirements,
-        validationSummary = PublicValidationSummary(
-            valid = validation.isValid,
-            issueCodes = validation.issues.map { it.code },
-        ),
+        validationSummary =
+            PublicValidationSummary(
+                valid = validation.isValid,
+                issueCodes = validation.issues.map { it.code },
+            ),
         createdAt = createdAt,
         updatedAt = updatedAt,
     )
@@ -132,7 +135,134 @@ fun ConfigProfile.toPublic(): PublicConfigProfile {
 
 private fun isPublicConfigKey(key: String): Boolean {
     val normalized = key.lowercase().replace(Regex("[^a-z0-9]"), "")
-    return normalized !in setOf("privatekey", "presharedkey", "password", "token", "secret", "apikey")
+    return normalized !in
+        setOf(
+            "privatekey",
+            "presharedkey",
+            "password",
+            "token",
+            "secret",
+            "apikey",
+            "authorization",
+        )
+}
+
+data class AwgParameterMetadata(
+    val key: String,
+    val title: String,
+    val description: String,
+    val validRange: String? = null,
+)
+
+/** Bundled, deterministic explanations used when the optional server/AI assistant is offline. */
+object AwgParameterMetadataCatalog {
+    val all =
+        listOf(
+            AwgParameterMetadata(
+                "Address",
+                "Interface address",
+                "The tunnel addresses assigned to this device.",
+            ),
+            AwgParameterMetadata("DNS", "DNS", "Resolvers used while the tunnel is active."),
+            AwgParameterMetadata(
+                "MTU",
+                "MTU",
+                "Maximum transmission unit for the tunnel interface.",
+                "1..65535",
+            ),
+            AwgParameterMetadata(
+                "ListenPort",
+                "Listen port",
+                "Local UDP port used by the interface.",
+                "1..65535",
+            ),
+            AwgParameterMetadata(
+                "AllowedIPs",
+                "Allowed IPs",
+                "Peer routes; 0.0.0.0/0 and ::/0 represent full-tunnel routing.",
+            ),
+            AwgParameterMetadata(
+                "Endpoint",
+                "Endpoint",
+                "The server hostname or address and UDP port.",
+            ),
+            AwgParameterMetadata(
+                "PersistentKeepalive",
+                "Persistent keepalive",
+                "Optional interval for NAT mapping maintenance.",
+                "0..65535",
+            ),
+            AwgParameterMetadata(
+                "Jc",
+                "Junk packet count",
+                "AWG2 obfuscation packet count.",
+                "1..128",
+            ),
+            AwgParameterMetadata(
+                "Jmin",
+                "Junk minimum",
+                "Minimum AWG2 junk packet size.",
+                "1..1279",
+            ),
+            AwgParameterMetadata(
+                "Jmax",
+                "Junk maximum",
+                "Maximum AWG2 junk packet size; must be at least Jmin.",
+                "2..1280",
+            ),
+            AwgParameterMetadata(
+                "S1",
+                "Init padding",
+                "AWG2 handshake padding parameter.",
+                "0..64",
+            ),
+            AwgParameterMetadata(
+                "S2",
+                "Response padding",
+                "AWG2 response padding parameter.",
+                "0..64",
+            ),
+            AwgParameterMetadata(
+                "S3",
+                "Cookie padding",
+                "AWG2 cookie padding parameter.",
+                "0..928",
+            ),
+            AwgParameterMetadata(
+                "S4",
+                "Transport padding",
+                "AWG2 transport padding parameter.",
+                "0..928",
+            ),
+            AwgParameterMetadata(
+                "H1",
+                "Handshake header 1",
+                "AWG2 handshake header selector.",
+                "1..4",
+            ),
+            AwgParameterMetadata(
+                "H2",
+                "Handshake header 2",
+                "AWG2 handshake header selector.",
+                "1..4",
+            ),
+            AwgParameterMetadata(
+                "H3",
+                "Handshake header 3",
+                "AWG2 handshake header selector.",
+                "1..4",
+            ),
+            AwgParameterMetadata(
+                "H4",
+                "Handshake header 4",
+                "AWG2 handshake header selector.",
+                "1..4",
+            ),
+        )
+
+    fun find(key: String): AwgParameterMetadata? = all.firstOrNull {
+        it.key.equals(key, ignoreCase = true)
+    }
 }
 
 @Serializable
@@ -180,14 +310,20 @@ interface AwgProfileRepository {
 }
 
 interface AwgRecommendationEngine {
-    suspend fun recommend(profile: ConfigProfile, context: Map<String, String> = emptyMap()): List<Recommendation>
+    suspend fun recommend(
+        profile: ConfigProfile,
+        context: Map<String, String> = emptyMap(),
+    ): List<Recommendation>
 }
 
 interface AwgTestEngine {
     suspend fun test(candidate: ConfigProfile): ConfigurationResult
 }
 
-/** Local deterministic repository for tests and offline UI prototyping; production storage is injectable. */
+/**
+ * Local deterministic repository for tests and offline UI prototyping; production storage is
+ * injectable.
+ */
 class InMemoryAwgProfileRepository : AwgProfileRepository {
     private val profiles = linkedMapOf<String, ConfigProfile>()
     private val changeEntries = mutableListOf<ConfigurationChange>()
@@ -199,7 +335,9 @@ class InMemoryAwgProfileRepository : AwgProfileRepository {
     override suspend fun get(id: String): ConfigProfile? = profiles[id]
 
     override suspend fun changes(profileId: String?): List<ConfigurationChange> =
-        changeEntries.filter { profileId == null || it.newProfileId == profileId || it.priorProfileId == profileId }
+        changeEntries.filter {
+            profileId == null || it.newProfileId == profileId || it.priorProfileId == profileId
+        }
 
     override suspend fun recordChange(change: ConfigurationChange) {
         changeEntries.removeAll { it.id == change.id }
@@ -213,19 +351,35 @@ class AwgCompatibilityEngine {
         when (protocol) {
             ConfigProtocol.WIREGUARD -> {
                 if (!capabilities.wireguard) {
-                    issues += ValidationIssue("CLIENT_WG_UNSUPPORTED", "WireGuard is unavailable in this client.")
+                    issues +=
+                        ValidationIssue(
+                            "CLIENT_WG_UNSUPPORTED",
+                            "WireGuard is unavailable in this client.",
+                        )
                 }
                 if (capabilities.serverWireguard == false) {
-                    issues += ValidationIssue("SERVER_WG_UNSUPPORTED", "The paired server does not advertise WireGuard.")
+                    issues +=
+                        ValidationIssue(
+                            "SERVER_WG_UNSUPPORTED",
+                            "The paired server does not advertise WireGuard.",
+                        )
                 }
             }
 
             ConfigProtocol.AWG2 -> {
                 if (!capabilities.awg2) {
-                    issues += ValidationIssue("CLIENT_AWG2_UNSUPPORTED", "AmneziaWG 2 is unavailable in this client.")
+                    issues +=
+                        ValidationIssue(
+                            "CLIENT_AWG2_UNSUPPORTED",
+                            "AmneziaWG 2 is unavailable in this client.",
+                        )
                 }
                 if (capabilities.serverAwg2 == false) {
-                    issues += ValidationIssue("SERVER_AWG2_UNSUPPORTED", "The paired server does not advertise AmneziaWG 2.")
+                    issues +=
+                        ValidationIssue(
+                            "SERVER_AWG2_UNSUPPORTED",
+                            "The paired server does not advertise AmneziaWG 2.",
+                        )
                 }
             }
 
@@ -238,7 +392,11 @@ class AwgCompatibilityEngine {
                         )
                 }
                 if (capabilities.serverAwg3 == false) {
-                    issues += ValidationIssue("SERVER_AWG3_UNSUPPORTED", "The paired server does not advertise AWG3.")
+                    issues +=
+                        ValidationIssue(
+                            "SERVER_AWG3_UNSUPPORTED",
+                            "The paired server does not advertise AWG3.",
+                        )
                 }
             }
         }

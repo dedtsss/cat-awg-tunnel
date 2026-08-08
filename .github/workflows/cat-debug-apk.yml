@@ -1,0 +1,63 @@
+name: cat-debug-apk
+
+permissions:
+  contents: read
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  verify-and-package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Run Cat core tests
+        run: ./gradlew :catcore:test --no-daemon --no-parallel --max-workers=1
+
+      - name: Run Android unit tests
+        run: ./gradlew :app:testStandaloneDebugUnitTest --no-daemon --no-parallel --max-workers=1
+
+      - name: Assemble installable debug APK
+        env:
+          GITHUB_SHA: ${{ github.sha }}
+        run: ./gradlew :app:assembleStandaloneDebug --no-daemon --no-parallel --max-workers=1 -PnoSplits=true
+
+      - name: Compile release Kotlin
+        run: ./gradlew :app:compileStandaloneReleaseKotlin --no-daemon --no-parallel --max-workers=1
+
+      - name: Run lint
+        run: ./gradlew :app:lintStandaloneDebug --no-daemon --no-parallel --max-workers=1
+
+      - name: Name APK with commit provenance
+        id: apk
+        shell: bash
+        run: |
+          sha="$(git rev-parse --short=12 HEAD)"
+          source_apk="$(find app/build/outputs/apk/standalone/debug -type f -name '*.apk' | head -1)"
+          test -n "$source_apk"
+          target="cat-awg-tunnel-debug-${sha}.apk"
+          cp "$source_apk" "$target"
+          echo "path=$target" >> "$GITHUB_OUTPUT"
+
+      - name: Upload installable debug APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: cat-awg-tunnel-debug-${{ github.sha }}
+          path: ${{ steps.apk.outputs.path }}
+          if-no-files-found: error
+          retention-days: 14

@@ -40,8 +40,8 @@ import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.WarningAmber
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -49,8 +49,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.surfaceColorAtElevation
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
@@ -78,16 +78,16 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
+import com.dedtsss.catawg.core.routing.DomainMatchMode
+import com.dedtsss.catawg.core.routing.DomainRouteTarget
+import com.dedtsss.catawg.core.routing.DomainRuleSource
+import com.dedtsss.catawg.core.routing.ShareTargetParser
 import com.dokar.sonner.TextToastAction
 import com.dokar.sonner.Toast
 import com.dokar.sonner.ToastType
 import com.dokar.sonner.Toaster
 import com.dokar.sonner.rememberToasterState
 import com.zaneschepke.networkmonitor.NetworkMonitor
-import com.dedtsss.catawg.core.routing.DomainMatchMode
-import com.dedtsss.catawg.core.routing.DomainRouteTarget
-import com.dedtsss.catawg.core.routing.DomainRuleSource
-import com.dedtsss.catawg.core.routing.ShareTargetParser
 import com.zaneschepke.wireguardautotunnel.cat.routing.DomainRoutingCoordinator
 import com.zaneschepke.wireguardautotunnel.data.AppDatabase
 import com.zaneschepke.wireguardautotunnel.domain.enums.TunnelMode
@@ -116,10 +116,12 @@ import com.zaneschepke.wireguardautotunnel.ui.screens.autotunnel.preferred.Prefe
 import com.zaneschepke.wireguardautotunnel.ui.screens.autotunnel.wifi.WifiSettingsScreen
 import com.zaneschepke.wireguardautotunnel.ui.screens.pin.PinLockScreen
 import com.zaneschepke.wireguardautotunnel.ui.screens.settings.SettingsScreen
-import com.zaneschepke.wireguardautotunnel.ui.screens.settings.diagnostics.ClientDiagnosticsScreen
 import com.zaneschepke.wireguardautotunnel.ui.screens.settings.appearance.AppearanceScreen
 import com.zaneschepke.wireguardautotunnel.ui.screens.settings.appearance.display.DisplayScreen
 import com.zaneschepke.wireguardautotunnel.ui.screens.settings.appearance.language.LanguageScreen
+import com.zaneschepke.wireguardautotunnel.ui.screens.settings.catserver.CatServerScreen
+import com.zaneschepke.wireguardautotunnel.ui.screens.settings.configurator.ConfiguratorScreen
+import com.zaneschepke.wireguardautotunnel.ui.screens.settings.diagnostics.ClientDiagnosticsScreen
 import com.zaneschepke.wireguardautotunnel.ui.screens.settings.dns.DnsSettingsScreen
 import com.zaneschepke.wireguardautotunnel.ui.screens.settings.globals.TunnelGlobalsScreen
 import com.zaneschepke.wireguardautotunnel.ui.screens.settings.integrations.AndroidIntegrationsScreen
@@ -153,8 +155,8 @@ import com.zaneschepke.wireguardautotunnel.util.extensions.isRunningOnTv
 import com.zaneschepke.wireguardautotunnel.util.extensions.openWebUrl
 import com.zaneschepke.wireguardautotunnel.util.extensions.restartApp
 import com.zaneschepke.wireguardautotunnel.util.permission.LocalNetworkPermissionHelper
-import com.zaneschepke.wireguardautotunnel.viewmodel.ConfigEditViewModel
 import com.zaneschepke.wireguardautotunnel.viewmodel.ClientDiagnosticsViewModel
+import com.zaneschepke.wireguardautotunnel.viewmodel.ConfigEditViewModel
 import com.zaneschepke.wireguardautotunnel.viewmodel.DomainSitesViewModel
 import com.zaneschepke.wireguardautotunnel.viewmodel.SharedAppViewModel
 import com.zaneschepke.wireguardautotunnel.viewmodel.SplitTunnelViewModel
@@ -684,8 +686,21 @@ class MainActivity : AppCompatActivity() {
                                                 entry<Route.Display> { DisplayScreen() }
                                                 entry<Route.Logs> { LogsScreen() }
                                                 entry<Route.ClientDiagnostics> {
-                                                    val viewModel: ClientDiagnosticsViewModel = koinViewModel()
+                                                    val viewModel: ClientDiagnosticsViewModel =
+                                                        koinViewModel()
                                                     ClientDiagnosticsScreen(viewModel)
+                                                }
+                                                entry<Route.CatServer> {
+                                                    val viewModel:
+                                                        com.zaneschepke.wireguardautotunnel.viewmodel.CatServerViewModel =
+                                                        koinViewModel()
+                                                    CatServerScreen(viewModel)
+                                                }
+                                                entry<Route.Configurator> {
+                                                    val viewModel:
+                                                        com.zaneschepke.wireguardautotunnel.viewmodel.ConfiguratorViewModel =
+                                                        koinViewModel()
+                                                    ConfiguratorScreen(viewModel)
                                                 }
                                                 entry<Route.Support> { SupportScreen() }
                                                 entry<Route.License> { LicenseScreen() }
@@ -913,18 +928,24 @@ private fun ShareDomainDialog(
     onDismiss: () -> Unit,
     onApply: (Int, DomainMatchMode) -> Unit,
 ) {
-    var selectedTunnelId by remember(domain, tunnels) {
-        mutableStateOf(activeTunnelIds.firstOrNull() ?: tunnels.firstOrNull()?.id)
-    }
+    var selectedTunnelId by
+        remember(domain, tunnels) {
+            mutableStateOf(activeTunnelIds.firstOrNull() ?: tunnels.firstOrNull()?.id)
+        }
     var exactOnly by rememberSaveable(domain) { mutableStateOf(false) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Add $domain to local-direct sites?") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("The rule resolves known A/AAAA answers and excludes those IPs from the VPN. Shared IPs can affect other sites.")
+                Text(
+                    "The rule resolves known A/AAAA answers and excludes those IPs from the VPN. Shared IPs can affect other sites."
+                )
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    androidx.compose.material3.Switch(checked = exactOnly, onCheckedChange = { exactOnly = it })
+                    androidx.compose.material3.Switch(
+                        checked = exactOnly,
+                        onCheckedChange = { exactOnly = it },
+                    )
                     Text(if (exactOnly) "Only this hostname" else "Domain and subdomains")
                 }
                 if (tunnels.isEmpty()) {
@@ -933,7 +954,9 @@ private fun ShareDomainDialog(
                     Text("Tunnel:")
                     tunnels.forEach { tunnel ->
                         TextButton(onClick = { selectedTunnelId = tunnel.id }) {
-                            Text("${if (selectedTunnelId == tunnel.id) "✓ " else ""}${tunnel.name}${if (tunnel.id in activeTunnelIds) " (active)" else ""}")
+                            Text(
+                                "${if (selectedTunnelId == tunnel.id) "✓ " else ""}${tunnel.name}${if (tunnel.id in activeTunnelIds) " (active)" else ""}"
+                            )
                         }
                     }
                 }
@@ -944,10 +967,15 @@ private fun ShareDomainDialog(
                 enabled = selectedTunnelId != null,
                 onClick = {
                     selectedTunnelId?.let {
-                        onApply(it, if (exactOnly) DomainMatchMode.EXACT else DomainMatchMode.SUFFIX)
+                        onApply(
+                            it,
+                            if (exactOnly) DomainMatchMode.EXACT else DomainMatchMode.SUFFIX,
+                        )
                     }
                 },
-            ) { Text("Add") }
+            ) {
+                Text("Add")
+            }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )

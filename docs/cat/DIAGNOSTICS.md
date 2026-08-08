@@ -24,4 +24,10 @@ client/network.jsonl
 client/incidents.json
 ```
 
-The sanitizer removes known private-key, preshared-key, password, token, API-key, and secret assignments/fields before persistence and before export. Export is explicit and local; no background upload exists.
+The sanitizer removes known private-key, preshared-key, password, token, API-key, and secret assignments/fields before persistence and before export. Export is explicit and local.
+
+When a Cat Server is paired, WorkManager uploads bounded CLIENT-only batches at a low frequency with
+short retry/backoff and a connected-network constraint. A server failure never blocks VPN traffic;
+the UI shows last success and pending/failed state. The Diagnostics screen can refresh correlated
+server incidents and request a server-generated combined ZIP for a selected window. If server data
+is unavailable, the UI explicitly labels the local evidence as client-only.

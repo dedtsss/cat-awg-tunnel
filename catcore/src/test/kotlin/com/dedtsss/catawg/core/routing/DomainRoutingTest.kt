@@ -40,7 +40,10 @@ class DomainRoutingTest {
     @Test
     fun `normalizes URL and shared browser text without accepting literal IPs`() {
         assertEquals("example.com", DomainNormalizer.normalize(" https://Example.COM/path?q=1 "))
-        assertEquals("sub.example.com", DomainNormalizer.fromSharedText("Open https://sub.example.com/news now"))
+        assertEquals(
+            "sub.example.com",
+            DomainNormalizer.fromSharedText("Open https://sub.example.com/news now"),
+        )
         assertEquals("xn--e1afmkfd.xn--p1ai", DomainNormalizer.normalize("пример.рф"))
         assertNull(DomainNormalizer.normalize("192.0.2.7"))
         assertNull(DomainNormalizer.normalize("https://[2001:db8::7]/"))
@@ -54,14 +57,29 @@ class DomainRoutingTest {
 
         assertTrue(DomainRuleMatcher.matches(suffix, "api.example.com"))
         assertFalse(DomainRuleMatcher.matches(exact, "www.api.example.com"))
-        assertEquals("exact", DomainRuleMatcher.effectiveRule(listOf(suffix, exact), "api.example.com")?.id)
-        assertEquals("suffix", DomainRuleMatcher.effectiveRule(listOf(suffix, exact), "www.example.com")?.id)
+        assertEquals(
+            "exact",
+            DomainRuleMatcher.effectiveRule(listOf(suffix, exact), "api.example.com")?.id,
+        )
+        assertEquals(
+            "suffix",
+            DomainRuleMatcher.effectiveRule(listOf(suffix, exact), "www.example.com")?.id,
+        )
     }
 
     @Test
     fun `planner emits only current local-direct v4 and v6 host exclusions`() {
-        val local = rule(ipv4 = listOf(ip("198.51.100.8"), ip("198.51.100.9", current = false)), ipv6 = listOf(ip("2001:db8::8")))
-        val defaultTunnel = rule(id = "vpn", target = DomainRouteTarget.DEFAULT_TUNNEL, ipv4 = listOf(ip("198.51.100.10")))
+        val local =
+            rule(
+                ipv4 = listOf(ip("198.51.100.8"), ip("198.51.100.9", current = false)),
+                ipv6 = listOf(ip("2001:db8::8")),
+            )
+        val defaultTunnel =
+            rule(
+                id = "vpn",
+                target = DomainRouteTarget.DEFAULT_TUNNEL,
+                ipv4 = listOf(ip("198.51.100.10")),
+            )
         val disabled = rule(id = "disabled", enabled = false, ipv4 = listOf(ip("198.51.100.11")))
 
         val exclusions = DomainRoutingPlanner.exclusions(listOf(local, defaultTunnel, disabled))
@@ -85,7 +103,10 @@ class DomainRoutingTest {
                 ),
             )
 
-        assertEquals(setOf("198.51.100.2", "198.51.100.3"), merged.resolvedIpv4.filter { it.isCurrent }.map { it.address }.toSet())
+        assertEquals(
+            setOf("198.51.100.2", "198.51.100.3"),
+            merged.resolvedIpv4.filter { it.isCurrent }.map { it.address }.toSet(),
+        )
         assertFalse(merged.resolvedIpv4.first { it.address == "198.51.100.1" }.isCurrent)
         assertEquals(
             setOf("198.51.100.2", "198.51.100.3"),
@@ -96,7 +117,13 @@ class DomainRoutingTest {
     @Test
     fun `shared IP index and diagnosis explain the local routing limitation`() {
         val main = rule(id = "main", domain = "example.com", ipv4 = listOf(ip("203.0.113.10")))
-        val other = rule(id = "other", domain = "cdn.example.net", enabled = false, ipv4 = listOf(ip("203.0.113.10")))
+        val other =
+            rule(
+                id = "other",
+                domain = "cdn.example.net",
+                enabled = false,
+                ipv4 = listOf(ip("203.0.113.10")),
+            )
         val conflicts = SharedIpIndex.conflicts(listOf(main, other))
 
         assertEquals(listOf("example.com", "cdn.example.net"), conflicts.single().domains)
@@ -104,7 +131,8 @@ class DomainRoutingTest {
             DomainDiagnostics.explain(
                 input = "https://www.example.com/health",
                 rules = listOf(main, other),
-                currentResolution = DomainResolution("www.example.com", ipv4 = listOf("203.0.113.10")),
+                currentResolution =
+                    DomainResolution("www.example.com", ipv4 = listOf("203.0.113.10")),
             )
 
         assertNotNull(diagnosis)
@@ -134,7 +162,13 @@ class DomainRoutingTest {
         val first = RouteExclusion("198.51.100.1", 32, "a")
         val second = RouteExclusion("2001:db8::1", 128, "a")
 
-        assertFalse(DomainRouteRebuildDecision.requiresVpnRebuild(listOf(first, second), listOf(second, first), true))
+        assertFalse(
+            DomainRouteRebuildDecision.requiresVpnRebuild(
+                listOf(first, second),
+                listOf(second, first),
+                true,
+            )
+        )
         assertFalse(
             DomainRouteRebuildDecision.requiresVpnRebuild(
                 listOf(first.copy(ruleId = "old")),
@@ -142,8 +176,12 @@ class DomainRoutingTest {
                 true,
             )
         )
-        assertFalse(DomainRouteRebuildDecision.requiresVpnRebuild(listOf(first), listOf(second), false))
-        assertTrue(DomainRouteRebuildDecision.requiresVpnRebuild(listOf(first), listOf(second), true))
+        assertFalse(
+            DomainRouteRebuildDecision.requiresVpnRebuild(listOf(first), listOf(second), false)
+        )
+        assertTrue(
+            DomainRouteRebuildDecision.requiresVpnRebuild(listOf(first), listOf(second), true)
+        )
     }
 
     @Test
@@ -152,7 +190,16 @@ class DomainRoutingTest {
         val beforeDelete = DomainRoutingPlanner.exclusions(listOf(activeRule))
         val afterDelete = DomainRoutingPlanner.exclusions(emptyList())
 
-        assertEquals(listOf("198.51.100.77/32"), beforeDelete.map { "${it.address}/${it.prefixLength}" })
-        assertTrue(DomainRouteRebuildDecision.requiresVpnRebuild(beforeDelete, afterDelete, tunnelIsActive = true))
+        assertEquals(
+            listOf("198.51.100.77/32"),
+            beforeDelete.map { "${it.address}/${it.prefixLength}" },
+        )
+        assertTrue(
+            DomainRouteRebuildDecision.requiresVpnRebuild(
+                beforeDelete,
+                afterDelete,
+                tunnelIsActive = true,
+            )
+        )
     }
 }

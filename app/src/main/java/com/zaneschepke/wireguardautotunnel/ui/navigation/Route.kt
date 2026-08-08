@@ -43,6 +43,20 @@ sealed class Route : NavKey {
             get() = true
     }
 
+    @Keep
+    @Serializable
+    data object CatServer : Route(), SecureRoute {
+        override val requiresProtection: Boolean
+            get() = true
+    }
+
+    @Keep
+    @Serializable
+    data object Configurator : Route(), SecureRoute {
+        override val requiresProtection: Boolean
+            get() = true
+    }
+
     @Keep @Serializable data object Appearance : Route()
 
     @Keep @Serializable data object Language : Route()
@@ -226,7 +240,9 @@ enum class Tab(
                 Route.Security,
                 Route.Monitoring,
                 Route.Logs,
-                Route.ClientDiagnostics -> SETTINGS
+                Route.ClientDiagnostics,
+                Route.CatServer,
+                Route.Configurator -> SETTINGS
                 is Route.Support,
                 Route.License,
                 Route.Donate,

@@ -5,6 +5,7 @@ import android.os.StrictMode
 import com.zaneschepke.tunnel.backend.Backend
 import com.zaneschepke.tunnel.di.tunnelModule
 import com.zaneschepke.tunnel.service.VpnService
+import com.zaneschepke.wireguardautotunnel.cat.diagnostics.CatDiagnosticsSyncWorker
 import com.zaneschepke.wireguardautotunnel.cat.diagnostics.ClientDiagnosticsObserver
 import com.zaneschepke.wireguardautotunnel.core.event.TunnelEventDispatcher
 import com.zaneschepke.wireguardautotunnel.core.orchestration.AppBoostrapCoordinator
@@ -96,6 +97,7 @@ class WireGuardAutoTunnel : Application(), KoinComponent {
 
         backend.setAlwaysOnCallback(alwaysOnCallback)
         clientDiagnosticsObserver.start()
+        CatDiagnosticsSyncWorker.schedule(this)
 
         val dispatcher = get<TunnelEventDispatcher>()
         val provider = get<TunnelProvider>()

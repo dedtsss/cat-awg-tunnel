@@ -33,7 +33,8 @@ class AwgConfiguratorTest {
         AllowedIPs = 0.0.0.0/0, ::/0
         Endpoint = vpn.example.com:51820
         PersistentKeepalive = 25
-        """.trimIndent()
+        """
+            .trimIndent()
 
     @Test
     fun `parser serializes deterministic portable AWG2 document`() {
@@ -50,7 +51,8 @@ class AwgConfiguratorTest {
 
     @Test
     fun `validator catches deterministic ranges dependencies and AWG3 gate`() {
-        val invalid = validAwg2.replace("Jmin = 100", "Jmin = 400").replace("Jmax = 200", "Jmax = 2")
+        val invalid =
+            validAwg2.replace("Jmin = 100", "Jmin = 400").replace("Jmax = 200", "Jmax = 2")
         val invalidResult = AwgConfigValidator().validate(invalid, ConfigProtocol.AWG2)
         assertTrue(invalidResult.issues.any { it.code == "AWG_JUNK_RANGE" })
 
@@ -68,7 +70,9 @@ class AwgConfiguratorTest {
         assertEquals(setOf("awg2"), candidate.capabilityRequirements)
         assertFalse(public.parameters.keys.any { it.contains("PrivateKey", ignoreCase = true) })
         assertFalse(public.parameters.keys.any { it.contains("PresharedKey", ignoreCase = true) })
-        assertFalse(public.parameters.values.any { it == "client-private-key" || it == "peer-secret" })
+        assertFalse(
+            public.parameters.values.any { it == "client-private-key" || it == "peer-secret" }
+        )
         assertTrue("issues=${candidate.validation.issues}", candidate.validation.isValid)
     }
 
@@ -80,7 +84,9 @@ class AwgConfiguratorTest {
 
     @Test
     fun `profile history links explicit diagnostic action and measured result`() = runBlocking {
-        val profile = AwgConfigGenerator().candidate("Baseline", ConfigProtocol.AWG2, AwgConfigParser().parse(validAwg2))
+        val profile =
+            AwgConfigGenerator()
+                .candidate("Baseline", ConfigProtocol.AWG2, AwgConfigParser().parse(validAwg2))
         val repository = InMemoryAwgProfileRepository()
         repository.save(profile)
         repository.recordChange(
@@ -88,7 +94,8 @@ class AwgConfiguratorTest {
                 newProfileId = profile.id,
                 reason = "user applied validated candidate",
                 diagnosticAction = DiagnosticAction(description = "Compare reconnect history"),
-                result = ConfigurationResult(applied = true, incidentDelta = -1, reconnectDelta = -2),
+                result =
+                    ConfigurationResult(applied = true, incidentDelta = -1, reconnectDelta = -2),
             )
         )
 

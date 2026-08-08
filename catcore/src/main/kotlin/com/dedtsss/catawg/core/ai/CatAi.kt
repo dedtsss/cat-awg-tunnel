@@ -16,7 +16,10 @@ data class CatAiSettings(
 data class AiAssistantRequest(val message: String, val context: Map<String, String> = emptyMap())
 
 @Serializable
-data class AiAssistantResponse(val message: String, val recommendations: List<Recommendation> = emptyList())
+data class AiAssistantResponse(
+    val message: String,
+    val recommendations: List<Recommendation> = emptyList(),
+)
 
 interface CatAiProvider {
     val available: Boolean
@@ -24,7 +27,9 @@ interface CatAiProvider {
     suspend fun ask(request: AiAssistantRequest): AiAssistantResponse?
 }
 
-/** Functional offline default: routing, diagnostics and validation never depend on AI availability. */
+/**
+ * Functional offline default: routing, diagnostics and validation never depend on AI availability.
+ */
 object DisabledCatAiProvider : CatAiProvider {
     override val available: Boolean = false
 

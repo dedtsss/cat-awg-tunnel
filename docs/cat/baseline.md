@@ -39,10 +39,19 @@ The baseline test inventory is intentionally small (`app/src/test/.../ExampleUni
 
 All final Gradle invocations were serialized with `--no-daemon --no-parallel --max-workers=1` and the VPS-provided 1 GiB Gradle heap / 512 MiB metaspace cap.
 
-- `:catcore:test`: PASS, 20 JVM tests (routing, diagnostics, configurator, protocol fixtures).
-- `:app:testStandaloneDebugUnitTest`: PASS (the upstream app unit-test inventory remains one test).
-- `:app:assembleStandaloneDebug`: PASS; standalone debug APK produced after native submodules were initialized.
-- `:app:lintStandaloneDebug`: PASS; no new issues. The committed baseline filters 62 inherited upstream errors, 95 inherited warnings, and one hint so future Cat changes are still linted.
+- `:catcore:test`: PASS, 25 JVM tests (routing, diagnostics, configurator, protocol fixtures,
+  bootstrap and URL/security contracts).
+- `:app:testStandaloneDebugUnitTest`: PASS, including Keystore envelope redaction/round-trip tests.
+- `:app:assembleStandaloneDebug -PnoSplits=true`: PASS; one installable standalone debug APK was
+  produced after native submodules were initialized.
+- `:app:compileStandaloneReleaseKotlin`: PASS.
+- `:app:lintStandaloneDebug`: PASS; no new errors. The committed baseline filters inherited
+  upstream issues so future Cat changes are still linted.
+- `ktfmtCheck`: PASS for all Kotlin source sets; legacy Gradle-script scans are intentionally
+  skipped because the upstream scripts use a different style and the native submodule contains a
+  broken symlink.
+- `scripts/verify-cat-contract.sh`: PASS; Android fixtures/core tests plus 10 server contract/API
+  tests.
 - `:app:compileStandaloneReleaseKotlin`: PASS. A signed release APK cannot be produced on this runner because neither a keystore nor signing environment variables are present.
 
 Physical-device/emulator VPN handshakes, Chrome/Firefox share-sheet interaction, and actual browser traffic routing were not run. Parser, lifecycle, route-planning, persistence, and export behavior are covered by JVM/code-level checks instead.

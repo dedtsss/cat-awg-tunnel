@@ -308,8 +308,24 @@ fun SettingsScreen(
             SurfaceRow(
                 leading = { Icon(Icons.Outlined.MonitorHeart, contentDescription = null) },
                 title = "Client diagnostics",
-                description = { DescriptionText("Local incidents and sanitized diagnostic export") },
+                description = {
+                    DescriptionText("Local incidents and sanitized diagnostic export")
+                },
                 onClick = { navController.push(Route.ClientDiagnostics) },
+            )
+            SurfaceRow(
+                leading = { Icon(Icons.Outlined.Public, contentDescription = null) },
+                title = stringResource(R.string.cat_server),
+                description = {
+                    DescriptionText(stringResource(R.string.cat_server_settings_desc))
+                },
+                onClick = { navController.push(Route.CatServer) },
+            )
+            SurfaceRow(
+                leading = { Icon(Icons.Outlined.SettingsBackupRestore, contentDescription = null) },
+                title = stringResource(R.string.cat_configurator),
+                description = { DescriptionText(stringResource(R.string.cat_configurator_desc)) },
+                onClick = { navController.push(Route.Configurator) },
             )
             SurfaceRow(
                 leading = { Icon(Icons.Outlined.SettingsBackupRestore, contentDescription = null) },

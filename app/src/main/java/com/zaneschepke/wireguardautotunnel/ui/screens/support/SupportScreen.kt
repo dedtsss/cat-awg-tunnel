@@ -87,7 +87,7 @@ fun SupportScreen(viewModel: SupportViewModel = koinViewModel()) {
 
     val version = remember {
         "v${BuildConfig.VERSION_NAME +
-                if(BuildConfig.DEBUG) "-debug" else "" }"
+                if(BuildConfig.DEBUG) "-debug" else "" }+git.${BuildConfig.GIT_SHA}"
     }
 
     val focusRequester = remember { FocusRequester() }

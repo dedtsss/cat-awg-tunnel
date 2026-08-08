@@ -1,6 +1,9 @@
 package com.dedtsss.catawg.core.configurator
 
-/** Small, deterministic INI parser for the portable contract; Android still uses upstream parsing to apply. */
+/**
+ * Small, deterministic INI parser for the portable contract; Android still uses upstream parsing to
+ * apply.
+ */
 class AwgConfigParser {
     fun parse(raw: String): AwgConfigDocument {
         val interfaceValues = linkedMapOf<String, String>()
@@ -14,7 +17,8 @@ class AwgConfigParser {
             if (line.startsWith("[") && line.endsWith("]")) {
                 section = line.substring(1, line.length - 1).trim().lowercase()
                 currentPeer =
-                    if (section == "peer") linkedMapOf<String, String>().also { peers += it } else null
+                    if (section == "peer") linkedMapOf<String, String>().also { peers += it }
+                    else null
                 if (section != "interface" && section != "peer") {
                     throw AwgConfigParseException(index + 1, "Unsupported section [$section].")
                 }
@@ -22,12 +26,18 @@ class AwgConfigParser {
             }
             val delimiter = line.indexOf('=')
             if (delimiter <= 0 || section == null) {
-                throw AwgConfigParseException(index + 1, "Expected a key=value entry inside a section.")
+                throw AwgConfigParseException(
+                    index + 1,
+                    "Expected a key=value entry inside a section.",
+                )
             }
             val key = canonicalKey(line.substring(0, delimiter).trim())
             val value = line.substring(delimiter + 1).trim()
             if (key.isBlank() || value.isBlank()) {
-                throw AwgConfigParseException(index + 1, "Configuration keys and values cannot be empty.")
+                throw AwgConfigParseException(
+                    index + 1,
+                    "Configuration keys and values cannot be empty.",
+                )
             }
             when (section) {
                 "interface" -> interfaceValues[key] = value
@@ -37,34 +47,33 @@ class AwgConfigParser {
         return AwgConfigDocument(interfaceValues = interfaceValues, peers = peers)
     }
 
-    fun serialize(document: AwgConfigDocument): String =
-        buildString {
-            appendLine("[Interface]")
-            document.interfaceValues.forEach { (key, value) -> appendLine("$key = $value") }
-            document.peers.forEach { peer ->
-                appendLine()
-                appendLine("[Peer]")
-                peer.forEach { (key, value) -> appendLine("$key = $value") }
-            }
+    fun serialize(document: AwgConfigDocument): String = buildString {
+        appendLine("[Interface]")
+        document.interfaceValues.forEach { (key, value) -> appendLine("$key = $value") }
+        document.peers.forEach { peer ->
+            appendLine()
+            appendLine("[Peer]")
+            peer.forEach { (key, value) -> appendLine("$key = $value") }
         }
+    }
 
     private fun canonicalKey(value: String): String =
         value.trim().lowercase().replace("_", "").replace("-", "").let { normalized ->
             mapOf(
-                    "privatekey" to "PrivateKey",
-                    "publickey" to "PublicKey",
-                    "presharedkey" to "PresharedKey",
-                    "address" to "Address",
-                    "dns" to "DNS",
-                    "mtu" to "MTU",
-                    "allowedips" to "AllowedIPs",
-                    "persistentkeepalive" to "PersistentKeepalive",
-                    "listenport" to "ListenPort",
-                    "jmin" to "Jmin",
-                    "jmax" to "Jmax",
-                )[normalized]
-                ?: normalized.replaceFirstChar { it.uppercase() }
+                "privatekey" to "PrivateKey",
+                "publickey" to "PublicKey",
+                "presharedkey" to "PresharedKey",
+                "address" to "Address",
+                "dns" to "DNS",
+                "mtu" to "MTU",
+                "allowedips" to "AllowedIPs",
+                "persistentkeepalive" to "PersistentKeepalive",
+                "listenport" to "ListenPort",
+                "jmin" to "Jmin",
+                "jmax" to "Jmax",
+            )[normalized] ?: normalized.replaceFirstChar { it.uppercase() }
         }
 }
 
-class AwgConfigParseException(val line: Int, message: String) : IllegalArgumentException("Line $line: $message")
+class AwgConfigParseException(val line: Int, message: String) :
+    IllegalArgumentException("Line $line: $message")
