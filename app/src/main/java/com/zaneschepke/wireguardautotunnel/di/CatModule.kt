@@ -15,6 +15,8 @@ import com.zaneschepke.wireguardautotunnel.cat.server.CatServerAiProvider
 import com.zaneschepke.wireguardautotunnel.data.cat.AndroidKeystoreCatServerCredentialStore
 import com.zaneschepke.wireguardautotunnel.data.cat.CatConfigProfileStore
 import com.zaneschepke.wireguardautotunnel.data.cat.CatServerSettingsStore
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.module.dsl.singleOf
 import org.koin.core.qualifier.named
@@ -35,10 +37,39 @@ val catModule = module {
         )
     }
     single<CatAiProvider> { CatServerAiProvider(get(), get(), get()) }
-    singleOf(::CatDiagnosticsSyncCoordinator)
+    single {
+        CatDiagnosticsSyncCoordinator(
+            store = get(),
+            client = get(),
+            credentials = get(),
+            settingsStore = get(),
+            ioDispatcher = get<CoroutineDispatcher>(named(Dispatcher.IO)),
+        )
+    }
     singleOf(::CatConfigProfileStore)
     singleOf(::AndroidDomainRouteProvider) bind DomainRouteProvider::class
     single<DomainResolver> { AndroidDomainResolver(androidContext(), get(named(Dispatcher.IO))) }
-    singleOf(::DomainRoutingCoordinator)
-    singleOf(::ClientDiagnosticsObserver)
+    // These constructors use qualified application/IO bindings. Keep them explicit: Koin's
+    // constructor DSL cannot infer qualifiers and would silently look for unqualified instances.
+    single {
+        DomainRoutingCoordinator(
+            repository = get(),
+            resolver = get(),
+            routeProvider = get(),
+            backend = get(),
+            diagnostics = get(),
+            networkMonitor = get(),
+            applicationScope = get<CoroutineScope>(named(Scope.APPLICATION)),
+            ioDispatcher = get<CoroutineDispatcher>(named(Dispatcher.IO)),
+        )
+    }
+    single {
+        ClientDiagnosticsObserver(
+            backend = get(),
+            networkMonitor = get(),
+            recorder = get(),
+            scope = get<CoroutineScope>(named(Scope.APPLICATION)),
+            ioDispatcher = get<CoroutineDispatcher>(named(Dispatcher.IO)),
+        )
+    }
 }
