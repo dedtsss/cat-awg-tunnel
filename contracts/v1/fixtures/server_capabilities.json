@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "cat.v1",
+  "serverId": "c1c4edb5-7a86-44ce-91cd-63508edb9549",
+  "agentVersion": "0.1.0",
+  "os": "Ubuntu 24.04 LTS",
+  "architecture": "x86_64",
+  "engines": {
+    "wireguard": {"supported": true, "version": "wireguard-tools v1.0"},
+    "awg2": {"supported": false, "version": null},
+    "awg3": {"supported": false, "version": null}
+  },
+  "features": {"diagnostics": true, "configManagement": true, "serverRouting": false, "routingBackend": null, "aiGateway": false},
+  "managementApiVersion": "v1"
+}

@@ -1,0 +1,6 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema", "$id": "https://cat-awg.example/contracts/v1/public-config-profile.schema.json",
+  "type": "object", "additionalProperties": false,
+  "required": ["id", "name", "protocol", "parameters", "capabilityRequirements", "validationSummary", "createdAt", "updatedAt"],
+  "properties": {"id": {"type": "string", "minLength": 1}, "name": {"type": "string", "minLength": 1}, "protocol": {"enum": ["WIREGUARD", "AWG2", "AWG3"]}, "parameters": {"type": "object", "additionalProperties": {"type": "string"}, "propertyNames": {"not": {"pattern": "(?i)(private.?key|preshared.?key|password|token|secret|api.?key|authorization)"}}}, "capabilityRequirements": {"type": "array", "items": {"type": "string"}}, "validationSummary": {"type": "object", "additionalProperties": false, "required": ["valid", "issueCodes"], "properties": {"valid": {"type": "boolean"}, "issueCodes": {"type": "array", "items": {"type": "string"}}}}, "createdAt": {"type": "string", "format": "date-time"}, "updatedAt": {"type": "string", "format": "date-time"}}
+}

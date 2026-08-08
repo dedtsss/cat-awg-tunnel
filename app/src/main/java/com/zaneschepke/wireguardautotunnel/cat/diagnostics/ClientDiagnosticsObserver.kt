@@ -73,7 +73,7 @@ class ClientDiagnosticsObserver(
                     code = "TUNNEL_DDNS_UPDATED",
                     summary = "Tunnel endpoint DNS changed.",
                     details = mapOf("changedPeerCount" to changedPeers.size.toString()),
-                    tunnelId = tunnelId,
+                    tunnelId = tunnelId.toString(),
                 )
 
             is TunnelEvent.FallbackToIpv4 ->
@@ -82,7 +82,7 @@ class ClientDiagnosticsObserver(
                     severity = DiagnosticSeverity.WARNING,
                     code = "IP_FAMILY_MISMATCH",
                     summary = "Tunnel fell back to IPv4.",
-                    tunnelId = tunnelId,
+                    tunnelId = tunnelId.toString(),
                 )
 
             is TunnelEvent.RecoveredToIpv6 ->
@@ -90,7 +90,7 @@ class ClientDiagnosticsObserver(
                     category = DiagnosticCategory.ROUTE,
                     code = "IPV6_RECOVERED",
                     summary = "Tunnel recovered IPv6 connectivity.",
-                    tunnelId = tunnelId,
+                    tunnelId = tunnelId.toString(),
                 )
 
             is TunnelEvent.NoRootShellAccess ->
@@ -99,7 +99,7 @@ class ClientDiagnosticsObserver(
                     severity = DiagnosticSeverity.WARNING,
                     code = "ROOT_SHELL_UNAVAILABLE",
                     summary = "An optional root shell action was unavailable.",
-                    tunnelId = tunnelId,
+                    tunnelId = tunnelId.toString(),
                 )
 
             is TunnelEvent.SeamlessRecoveryAttempted ->
@@ -108,7 +108,7 @@ class ClientDiagnosticsObserver(
                     severity = DiagnosticSeverity.WARNING,
                     code = "TUNNEL_BOUNCE_ATTEMPTED",
                     summary = "Backend started a seamless tunnel recovery attempt.",
-                    tunnelId = tunnelId,
+                    tunnelId = tunnelId.toString(),
                 )
         }
 }

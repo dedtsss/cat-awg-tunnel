@@ -1,26 +1,20 @@
-# Cat Protocol v1
+# Canonical Cat Protocol v1
 
-This Android track defines a client-facing contract only; it does not implement Cat Server.
+Cat AWG Tunnel and Cat Server share the byte-identical machine-checkable catalog in `contracts/v1/`. Before cross-repo delivery run `CAT_SERVER_REPO=/path/to/cat-awg-server scripts/verify-cat-contract.sh`; it performs the byte drift check, Android JVM deserialization suite, and server live-API contract suite.
 
-```text
-prefix: /api/v1
-schemaVersion: cat.v1
-timestamps: RFC3339 UTC
-IDs: opaque UUID/string values
-post-pairing MVP auth: token over TLS
-future auth: device credentials / mTLS-compatible boundary
-```
+The protocol uses `/api/v1`, camelCase JSON, opaque string IDs, `schemaVersion: "cat.v1"`, and RFC3339 timestamps with a timezone/UTC normalization. Android accepts future unknown response fields deliberately; server models reject unknown request fields deliberately.
 
-| Method | Endpoint | Client boundary |
-| --- | --- | --- |
-| GET | `/api/v1/health` | `health()` |
-| GET | `/api/v1/capabilities` | `capabilities()` |
-| POST | `/api/v1/diagnostics/events` | `postDiagnosticEvents()` |
-| GET | `/api/v1/incidents?from=&to=` | `incidents()` |
-| GET | `/api/v1/diagnostics/bundle?from=&to=` | `diagnosticBundle()` |
-| POST | `/api/v1/config/validate` | `validateConfig()` |
-| POST | `/api/v1/ai/chat` | `aiChat()`; optional capability |
+| Boundary | Android implementation |
+| --- | --- |
+| Health | `CatHealth(schemaVersion, status, agentVersion, at)` |
+| Pairing | `KtorCatServerClient.pair()` implements `/pairing/start` and `/pairing/complete` |
+| Auth | later API calls send a device Bearer token over certificate-fingerprint-pinned HTTPS |
+| Capabilities | `ServerFeatures.routingBackend` is nullable and future fields are safely ignored |
+| Diagnostics | `postDiagnosticEvents()` sends the canonical batch envelope; Android sends only `CLIENT` events and string `tunnelId` |
+| Incidents | `IncidentsResponse` keeps the versioned server envelope |
+| Config | `ConfigValidationRequest` sends a sanitized `PublicConfigProfile`, never raw config/private keys/PSKs |
+| AI | optional `CatAiChatRequest/Response`; response is candidate-only and `applied=false` |
 
-`CatServerClient` and `InMemoryCatServerClient` live in `catcore/protocol`. `CatAiProvider` defaults to disabled, so routing, diagnostics, and validation work with no server/AI credentials. Generic diagnostic and public profile payloads never contain private keys, PSKs, passwords, provider secrets, or secret-bearing configuration.
+`KtorCatServerClient` is a real network boundary. Its `CatServerCredentialStore` must be implemented with Android Keystore-backed encrypted storage by the application integration; no plaintext storage implementation is provided. Initial bootstrap accepts only out-of-band verified certificate fingerprint material and the client retains hostname checking—there is no trust-all path.
 
-Fixtures shared with a later server implementation are under [`contracts/v1`](../../contracts/v1/): server capabilities, diagnostic event, incident, public profile, and AWG schema. JVM tests decode each typed fixture and exercise the mock boundary.
+Physical-device and real-VPS validation remain separate deployment checks. The JVM suite proves models and cross-contract fixtures; server tests exercise the local live API and bundle sanitizer.

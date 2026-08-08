@@ -1,0 +1,1 @@
+{"schemaVersion":"cat.v1","events":[{"id":"808df24a-e7e3-42ee-8e6e-fbd545a9c02c","ts":"2026-08-08T10:00:00Z","source":"CLIENT","category":"DNS","severity":"WARNING","code":"DNS_RESOLUTION_FAILED","summary":"Could not resolve example.com","details":{"domain":"example.com","status":"TIMEOUT"},"tunnelId":"42"}]}

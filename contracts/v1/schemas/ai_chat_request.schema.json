@@ -1,0 +1,5 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema", "$id": "https://cat-awg.example/contracts/v1/ai-chat-request.schema.json",
+  "type": "object", "additionalProperties": false, "required": ["schemaVersion", "message", "incidentId", "model", "memoryEnabled"],
+  "properties": {"schemaVersion": {"const": "cat.v1"}, "message": {"type": "string", "minLength": 1}, "incidentId": {"type": ["string", "null"]}, "model": {"type": ["string", "null"]}, "memoryEnabled": {"type": "boolean"}}
+}

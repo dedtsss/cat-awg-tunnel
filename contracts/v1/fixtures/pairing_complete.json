@@ -1,0 +1,6 @@
+{
+  "schemaVersion": "cat.v1",
+  "device": {"id": "a0d66207-a27c-4bbc-b157-778ea2aa5fb6", "name": "Pixel", "createdAt": "2026-08-08T10:00:00Z", "lastAccessedAt": null, "revokedAt": null},
+  "deviceToken": "catd_example_redacted_in_docs",
+  "certificateFingerprint": "sha256:example"
+}

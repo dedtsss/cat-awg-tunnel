@@ -1,7 +1,0 @@
-{
-  "schemaVersion": "cat.awg-config.v1",
-  "protocols": ["WIREGUARD", "AWG2", "AWG3"],
-  "interfaceFields": ["PrivateKey", "Address", "DNS", "ListenPort", "MTU", "Jc", "Jmin", "Jmax", "S1", "S2", "S3", "S4", "H1", "H2", "H3", "H4", "I1", "I2", "I3", "I4", "I5"],
-  "peerFields": ["PublicKey", "PresharedKey", "AllowedIPs", "Endpoint", "PersistentKeepalive"],
-  "awg3": { "capabilityGated": true, "bundledClientSupport": false }
-}

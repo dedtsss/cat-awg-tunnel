@@ -6,6 +6,7 @@ plugins {
 dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.bundles.ktor.client)
     testImplementation(libs.junit)
 }
 

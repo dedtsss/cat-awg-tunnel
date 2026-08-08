@@ -1,0 +1,12 @@
+{
+  "id": "808df24a-e7e3-42ee-8e6e-fbd545a9c02c",
+  "ts": "2026-08-08T10:00:00Z",
+  "source": "CLIENT",
+  "category": "NETWORK",
+  "severity": "WARNING",
+  "code": "NETWORK_LOST",
+  "summary": "Underlying network lost",
+  "details": {"network": "wifi"},
+  "tunnelId": "42",
+  "deviceId": "5110b54f-3fc9-4d77-9a30-2edf1fb1e2b0"
+}

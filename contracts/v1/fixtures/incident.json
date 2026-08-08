@@ -1,0 +1,12 @@
+{
+  "id": "1ec27ff7-8932-472e-9937-9ea61bfe22bf",
+  "startAt": "2026-08-08T10:00:00Z",
+  "endAt": null,
+  "severity": "WARNING",
+  "status": "OPEN",
+  "classification": "CLIENT_NETWORK",
+  "confidence": 0.8,
+  "eventIds": ["808df24a-e7e3-42ee-8e6e-fbd545a9c02c"],
+  "probableCause": "client underlying network was lost",
+  "recommendations": ["restore network connectivity"]
+}

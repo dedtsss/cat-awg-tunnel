@@ -1,0 +1,5 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema", "$id": "https://cat-awg.example/contracts/v1/health.schema.json",
+  "type": "object", "additionalProperties": false, "required": ["schemaVersion", "status", "agentVersion", "at"],
+  "properties": {"schemaVersion": {"const": "cat.v1"}, "status": {"const": "ok"}, "agentVersion": {"type": "string"}, "at": {"type": "string", "format": "date-time"}}
+}

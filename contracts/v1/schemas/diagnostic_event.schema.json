@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cat-awg.example/contracts/v1/diagnostic-event.schema.json",
+  "type": "object", "additionalProperties": false,
+  "required": ["id", "ts", "source", "category", "severity", "code", "summary", "details", "tunnelId", "deviceId"],
+  "properties": {
+    "id": {"type": "string", "minLength": 1}, "ts": {"type": "string", "format": "date-time"},
+    "source": {"enum": ["CLIENT", "SERVER"]},
+    "category": {"enum": ["NETWORK", "TUNNEL", "DNS", "ROUTE", "SYSTEM", "PROBE", "CONFIG"]},
+    "severity": {"enum": ["INFO", "WARNING", "ERROR"]},
+    "code": {"type": "string", "minLength": 1}, "summary": {"type": "string", "minLength": 1},
+    "details": {"type": "object"}, "tunnelId": {"type": ["string", "null"]}, "deviceId": {"type": ["string", "null"]}
+  }
+}

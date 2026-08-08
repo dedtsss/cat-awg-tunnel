@@ -43,7 +43,8 @@ data class DiagnosticEvent(
     val code: String,
     val summary: String,
     val details: Map<String, String> = emptyMap(),
-    val tunnelId: Int? = null,
+    /** Opaque wire identifier; Android database ids are converted to strings at this boundary. */
+    val tunnelId: String? = null,
 )
 
 @Serializable
@@ -57,6 +58,7 @@ enum class IncidentSeverity {
 enum class IncidentStatus {
     OPEN,
     RESOLVED,
+    OBSERVING,
 }
 
 @Serializable

@@ -98,9 +98,15 @@ data class PublicConfigProfile(
     val protocol: ConfigProtocol,
     val parameters: Map<String, String>,
     val capabilityRequirements: Set<String>,
-    val validation: ValidationResult,
+    val validationSummary: PublicValidationSummary,
     val createdAt: String,
     val updatedAt: String,
+)
+
+@Serializable
+data class PublicValidationSummary(
+    val valid: Boolean,
+    val issueCodes: List<String> = emptyList(),
 )
 
 fun ConfigProfile.toPublic(): PublicConfigProfile {
@@ -115,7 +121,10 @@ fun ConfigProfile.toPublic(): PublicConfigProfile {
         protocol = protocol,
         parameters = publicParameters,
         capabilityRequirements = capabilityRequirements,
-        validation = validation,
+        validationSummary = PublicValidationSummary(
+            valid = validation.isValid,
+            issueCodes = validation.issues.map { it.code },
+        ),
         createdAt = createdAt,
         updatedAt = updatedAt,
     )

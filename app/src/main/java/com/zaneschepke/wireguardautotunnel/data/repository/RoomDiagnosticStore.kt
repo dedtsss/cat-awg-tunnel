@@ -48,7 +48,7 @@ class RoomDiagnosticStore(
             code = code,
             summary = summary,
             details_json = json.encodeToString(details),
-            tunnel_id = tunnelId,
+            tunnel_id = tunnelId?.toIntOrNull(),
         )
 
     private fun toDomain(event: CatDiagnosticEvent) =
@@ -61,7 +61,7 @@ class RoomDiagnosticStore(
             code = event.code,
             summary = event.summary,
             details = runCatching { json.decodeFromString<Map<String, String>>(event.details_json) }.getOrDefault(emptyMap()),
-            tunnelId = event.tunnel_id,
+            tunnelId = event.tunnel_id?.toString(),
         )
 
     private fun Incident.toEntity() =
