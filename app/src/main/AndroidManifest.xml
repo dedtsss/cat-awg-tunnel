@@ -121,6 +121,13 @@
                 <data android:mimeType="application/x-zip-compressed" />
             </intent-filter>
 
+            <!-- Cat domain-routing share target: Chrome/Firefox and other apps share URL/text. -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+
             <!-- .conf files  -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />

@@ -17,8 +17,10 @@ import com.zaneschepke.wireguardautotunnel.service.autotunnel.AutoTunnelStateHol
 import com.zaneschepke.wireguardautotunnel.util.FileUtils
 import com.zaneschepke.wireguardautotunnel.util.network.NetworkUtils
 import com.zaneschepke.wireguardautotunnel.viewmodel.AutoTunnelViewModel
+import com.zaneschepke.wireguardautotunnel.viewmodel.ClientDiagnosticsViewModel
 import com.zaneschepke.wireguardautotunnel.viewmodel.ConfigEditViewModel
 import com.zaneschepke.wireguardautotunnel.viewmodel.DnsViewModel
+import com.zaneschepke.wireguardautotunnel.viewmodel.DomainSitesViewModel
 import com.zaneschepke.wireguardautotunnel.viewmodel.LockdownViewModel
 import com.zaneschepke.wireguardautotunnel.viewmodel.LoggerViewModel
 import com.zaneschepke.wireguardautotunnel.viewmodel.MonitoringViewModel
@@ -79,8 +81,10 @@ val appModule = module {
     single { NetworkUtils(get(named(Dispatcher.IO))) }
 
     viewModelOf(::AutoTunnelViewModel)
+    viewModelOf(::ClientDiagnosticsViewModel)
     viewModel { (id: Int?) -> ConfigEditViewModel(get(), get(), get(), get(), get(), id) }
     viewModelOf(::DnsViewModel)
+    viewModel { (id: Int) -> DomainSitesViewModel(get(), get(), get(), id) }
     viewModelOf(::LockdownViewModel)
     viewModelOf(::LoggerViewModel)
     viewModelOf(::MonitoringViewModel)

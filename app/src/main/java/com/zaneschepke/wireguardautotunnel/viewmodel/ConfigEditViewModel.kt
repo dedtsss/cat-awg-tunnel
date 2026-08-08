@@ -2,6 +2,8 @@ package com.zaneschepke.wireguardautotunnel.viewmodel
 
 import androidx.lifecycle.ViewModel
 import com.dokar.sonner.ToastType
+import com.dedtsss.catawg.core.configurator.AwgConfigValidator
+import com.dedtsss.catawg.core.configurator.ConfigProtocol
 import com.zaneschepke.wireguardautotunnel.R
 import com.zaneschepke.wireguardautotunnel.core.orchestration.TunnelCoordinator
 import com.zaneschepke.wireguardautotunnel.domain.enums.MimicMode
@@ -21,6 +23,7 @@ import com.zaneschepke.wireguardautotunnel.ui.state.EditablePeer
 import com.zaneschepke.wireguardautotunnel.ui.state.GlobalSettingsState
 import com.zaneschepke.wireguardautotunnel.util.StringValue
 import com.zaneschepke.wireguardautotunnel.util.extensions.asStringValue
+import com.zaneschepke.wireguardautotunnel.util.extensions.isAmneziaEnabled
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import org.orbitmvi.orbit.OrbitContainerHost
@@ -35,6 +38,10 @@ class ConfigEditViewModel(
     private val tunnelCoordinator: TunnelCoordinator,
     val tunnelId: Int?,
 ) : OrbitContainerHost<ConfigUiState, ConfigUiState, Nothing>, ViewModel() {
+
+    // The portable validator is intentionally invoked from UI orchestration, not implemented in
+    // Compose widgets. It validates a candidate only; existing upstream save/apply remains explicit.
+    private val catConfigValidator = AwgConfigValidator()
 
     override val container =
         orbitContainer<ConfigUiState, Nothing>(
@@ -129,6 +136,15 @@ class ConfigEditViewModel(
                 val config = state.draft.config.buildConfig(state.draft.tunnelName)
 
                 config.validate()
+                if (!state.isGlobalConfig) {
+                    val protocol =
+                        if (config.`interface`.isAmneziaEnabled()) ConfigProtocol.AWG2
+                        else ConfigProtocol.WIREGUARD
+                    val catValidation = catConfigValidator.validate(config.asQuickString(), protocol)
+                    catValidation.issues.firstOrNull { it.level.name == "ERROR" }?.let { issue ->
+                        throw CatConfigValidationException(issue.message)
+                    }
+                }
 
                 val tunnelConfig =
                     if (tunnelId == null) {
@@ -170,6 +186,7 @@ class ConfigEditViewModel(
                 val message =
                     when (it) {
                         is ConfigParseException -> it.asStringValue()
+                        is CatConfigValidationException -> StringValue.DynamicString(it.message.orEmpty())
                         else -> StringValue.StringResource(R.string.unknown_error)
                     }
 
@@ -336,3 +353,5 @@ class ConfigEditViewModel(
         reduce { state.copy(ui = state.ui.copy(isPeerDropdownExpanded = expanded)) }
     }
 }
+
+private class CatConfigValidationException(message: String) : IllegalArgumentException(message)

@@ -137,6 +137,12 @@ fun TunnelSettingsScreen(
             )
             SurfaceRow(
                 leading = { Icon(Icons.Outlined.Public, contentDescription = null) },
+                title = "Sites",
+                description = { DescriptionText("Domain-based local bypass and route diagnostics") },
+                onClick = { navController.push(Route.DomainSites(id = tunnel.id)) },
+            )
+            SurfaceRow(
+                leading = { Icon(Icons.Outlined.Public, contentDescription = null) },
                 title = stringResource(R.string.ipv6_settings),
                 onClick = { navController.push(Route.IPv6(tunnel.id)) },
             )

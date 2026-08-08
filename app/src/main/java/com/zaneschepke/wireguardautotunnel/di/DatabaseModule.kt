@@ -3,6 +3,9 @@ package com.zaneschepke.wireguardautotunnel.di
 import android.content.Context
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import com.dedtsss.catawg.core.diagnostics.ClientDiagnosticRecorder
+import com.dedtsss.catawg.core.diagnostics.DiagnosticStore
+import com.dedtsss.catawg.core.routing.DomainRuleRepository
 import com.zaneschepke.wireguardautotunnel.R
 import com.zaneschepke.wireguardautotunnel.data.AppDatabase
 import com.zaneschepke.wireguardautotunnel.data.DataStoreManager
@@ -13,7 +16,9 @@ import com.zaneschepke.wireguardautotunnel.data.migrations.MIGRATION_28_29
 import com.zaneschepke.wireguardautotunnel.data.repository.DataStoreAppStateRepository
 import com.zaneschepke.wireguardautotunnel.data.repository.InstalledAndroidPackageRepository
 import com.zaneschepke.wireguardautotunnel.data.repository.RoomAutoTunnelSettingsRepository
+import com.zaneschepke.wireguardautotunnel.data.repository.RoomDiagnosticStore
 import com.zaneschepke.wireguardautotunnel.data.repository.RoomDnsSettingsRepository
+import com.zaneschepke.wireguardautotunnel.data.repository.RoomDomainRuleRepository
 import com.zaneschepke.wireguardautotunnel.data.repository.RoomLockdownSettingsRepository
 import com.zaneschepke.wireguardautotunnel.data.repository.RoomMonitoringSettingsRepository
 import com.zaneschepke.wireguardautotunnel.data.repository.RoomProxySettingsRepository
@@ -64,6 +69,8 @@ val databaseModule = module {
     single { get<AppDatabase>().monitoringSettingsDao() }
     single { get<AppDatabase>().proxySettingsDoa() }
     single { get<AppDatabase>().tunnelConfigDoa() }
+    single { get<AppDatabase>().catDomainRuleDao() }
+    single { get<AppDatabase>().catDiagnosticsDao() }
 
     single { DataStoreManager(androidContext(), get(named(Dispatcher.IO))) }
 
@@ -77,6 +84,9 @@ val databaseModule = module {
     singleOf(::RoomProxySettingsRepository) bind ProxySettingsRepository::class
     singleOf(::RoomSettingsRepository) bind GeneralSettingRepository::class
     singleOf(::RoomTunnelRepository) bind TunnelRepository::class
+    singleOf(::RoomDomainRuleRepository) bind DomainRuleRepository::class
+    singleOf(::RoomDiagnosticStore) bind DiagnosticStore::class
+    singleOf(::ClientDiagnosticRecorder)
     viewModelScope {
         scoped<InstalledPackageRepository> {
             InstalledAndroidPackageRepository(

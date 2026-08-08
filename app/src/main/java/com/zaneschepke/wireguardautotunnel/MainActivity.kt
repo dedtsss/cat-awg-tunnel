@@ -24,9 +24,11 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -39,6 +41,7 @@ import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -47,7 +50,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -79,6 +84,11 @@ import com.dokar.sonner.ToastType
 import com.dokar.sonner.Toaster
 import com.dokar.sonner.rememberToasterState
 import com.zaneschepke.networkmonitor.NetworkMonitor
+import com.dedtsss.catawg.core.routing.DomainMatchMode
+import com.dedtsss.catawg.core.routing.DomainRouteTarget
+import com.dedtsss.catawg.core.routing.DomainRuleSource
+import com.dedtsss.catawg.core.routing.ShareTargetParser
+import com.zaneschepke.wireguardautotunnel.cat.routing.DomainRoutingCoordinator
 import com.zaneschepke.wireguardautotunnel.data.AppDatabase
 import com.zaneschepke.wireguardautotunnel.domain.enums.TunnelMode
 import com.zaneschepke.wireguardautotunnel.domain.model.TunnelConfig
@@ -106,6 +116,7 @@ import com.zaneschepke.wireguardautotunnel.ui.screens.autotunnel.preferred.Prefe
 import com.zaneschepke.wireguardautotunnel.ui.screens.autotunnel.wifi.WifiSettingsScreen
 import com.zaneschepke.wireguardautotunnel.ui.screens.pin.PinLockScreen
 import com.zaneschepke.wireguardautotunnel.ui.screens.settings.SettingsScreen
+import com.zaneschepke.wireguardautotunnel.ui.screens.settings.diagnostics.ClientDiagnosticsScreen
 import com.zaneschepke.wireguardautotunnel.ui.screens.settings.appearance.AppearanceScreen
 import com.zaneschepke.wireguardautotunnel.ui.screens.settings.appearance.display.DisplayScreen
 import com.zaneschepke.wireguardautotunnel.ui.screens.settings.appearance.language.LanguageScreen
@@ -125,6 +136,7 @@ import com.zaneschepke.wireguardautotunnel.ui.screens.tunnels.settings.TunnelSet
 import com.zaneschepke.wireguardautotunnel.ui.screens.tunnels.settings.config.ConfigScreen
 import com.zaneschepke.wireguardautotunnel.ui.screens.tunnels.settings.config.edit.ConfigEditScreen
 import com.zaneschepke.wireguardautotunnel.ui.screens.tunnels.settings.ipv6.IPv6Screen
+import com.zaneschepke.wireguardautotunnel.ui.screens.tunnels.sites.DomainSitesScreen
 import com.zaneschepke.wireguardautotunnel.ui.screens.tunnels.sort.SortScreen
 import com.zaneschepke.wireguardautotunnel.ui.screens.tunnels.splittunnel.SplitTunnelScreen
 import com.zaneschepke.wireguardautotunnel.ui.theme.AlertRed
@@ -142,6 +154,8 @@ import com.zaneschepke.wireguardautotunnel.util.extensions.openWebUrl
 import com.zaneschepke.wireguardautotunnel.util.extensions.restartApp
 import com.zaneschepke.wireguardautotunnel.util.permission.LocalNetworkPermissionHelper
 import com.zaneschepke.wireguardautotunnel.viewmodel.ConfigEditViewModel
+import com.zaneschepke.wireguardautotunnel.viewmodel.ClientDiagnosticsViewModel
+import com.zaneschepke.wireguardautotunnel.viewmodel.DomainSitesViewModel
 import com.zaneschepke.wireguardautotunnel.viewmodel.SharedAppViewModel
 import com.zaneschepke.wireguardautotunnel.viewmodel.SplitTunnelViewModel
 import com.zaneschepke.wireguardautotunnel.viewmodel.TunnelViewModel
@@ -170,6 +184,9 @@ class MainActivity : AppCompatActivity() {
     private val tunnelRepository: TunnelRepository by inject()
     private val appDatabase: AppDatabase by inject()
     private val networkMonitor: NetworkMonitor by inject()
+    private val domainRoutingCoordinator: DomainRoutingCoordinator by inject()
+
+    private var pendingSharedDomain by mutableStateOf<String?>(null)
 
     val viewModel by viewModel<SharedAppViewModel>()
     private lateinit var roomBackup: RoomBackup
@@ -191,6 +208,7 @@ class MainActivity : AppCompatActivity() {
 
         handleConfigFileIntent(intent)
         handleWgDeepLinkIntent(intent)
+        handleShareDomainIntent(intent)
 
         installSplashScreen().apply {
             setKeepOnScreenCondition { !viewModel.container.stateFlow.value.isAppLoaded }
@@ -200,7 +218,51 @@ class MainActivity : AppCompatActivity() {
             val context = LocalContext.current
             val isTv = isRunningOnTv()
             val uiState by viewModel.collectAsState()
+            val tunnelsUiState by viewModel.tunnelsUiState.collectAsState()
             val scope = rememberCoroutineScope()
+
+            pendingSharedDomain?.let { domain ->
+                ShareDomainDialog(
+                    domain = domain,
+                    tunnels = tunnelsUiState.tunnels,
+                    activeTunnelIds = tunnelsUiState.backendStatus.activeTunnels.keys,
+                    onDismiss = { pendingSharedDomain = null },
+                    onApply = { tunnelId, matchMode ->
+                        scope.launch {
+                            runCatching {
+                                    domainRoutingCoordinator.createAndApply(
+                                        tunnelId = tunnelId,
+                                        rawDomain = domain,
+                                        matchMode = matchMode,
+                                        routeTarget = DomainRouteTarget.LOCAL_DIRECT,
+                                        source = DomainRuleSource.SHARE,
+                                    )
+                                }
+                                .onSuccess {
+                                    pendingSharedDomain = null
+                                    snackbarChannel.send(
+                                        GlobalSideEffect.Snackbar(
+                                            StringValue.DynamicString(
+                                                "Added $domain. The active tunnel was rebuilt if route changes were needed."
+                                            ),
+                                            ToastType.Success,
+                                        )
+                                    )
+                                }
+                                .onFailure { error ->
+                                    snackbarChannel.send(
+                                        GlobalSideEffect.Snackbar(
+                                            StringValue.DynamicString(
+                                                "Could not add $domain: ${error.message ?: "unknown error"}"
+                                            ),
+                                            ToastType.Error,
+                                        )
+                                    )
+                                }
+                        }
+                    },
+                )
+            }
 
             LaunchedEffect(uiState.isAppLoaded) {
                 if (uiState.isAppLoaded) {
@@ -563,6 +625,13 @@ class MainActivity : AppCompatActivity() {
                                                         )
                                                     SplitTunnelScreen(viewModel)
                                                 }
+                                                entry<Route.DomainSites> { key ->
+                                                    val viewModel: DomainSitesViewModel =
+                                                        koinViewModel(
+                                                            parameters = { parametersOf(key.id) }
+                                                        )
+                                                    DomainSitesScreen(viewModel)
+                                                }
                                                 entry<Route.ConfigEdit> { key ->
                                                     val viewModel: ConfigEditViewModel =
                                                         koinViewModel(
@@ -614,6 +683,10 @@ class MainActivity : AppCompatActivity() {
                                                 entry<Route.Language> { LanguageScreen() }
                                                 entry<Route.Display> { DisplayScreen() }
                                                 entry<Route.Logs> { LogsScreen() }
+                                                entry<Route.ClientDiagnostics> {
+                                                    val viewModel: ClientDiagnosticsViewModel = koinViewModel()
+                                                    ClientDiagnosticsScreen(viewModel)
+                                                }
                                                 entry<Route.Support> { SupportScreen() }
                                                 entry<Route.License> { LicenseScreen() }
                                                 entry<Route.Donate> { DonateScreen() }
@@ -802,6 +875,7 @@ class MainActivity : AppCompatActivity() {
         setIntent(intent)
         handleConfigFileIntent(intent)
         handleWgDeepLinkIntent(intent)
+        handleShareDomainIntent(intent)
     }
 
     private fun handleConfigFileIntent(intent: Intent?) {
@@ -823,4 +897,58 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
+
+    private fun handleShareDomainIntent(intent: Intent?) {
+        if (intent?.action != Intent.ACTION_SEND || intent.type != "text/plain") return
+        val text = intent.getCharSequenceExtra(Intent.EXTRA_TEXT) ?: return
+        pendingSharedDomain = ShareTargetParser.parse(text)?.domain
+    }
+}
+
+@Composable
+private fun ShareDomainDialog(
+    domain: String,
+    tunnels: List<TunnelConfig>,
+    activeTunnelIds: Set<Int>,
+    onDismiss: () -> Unit,
+    onApply: (Int, DomainMatchMode) -> Unit,
+) {
+    var selectedTunnelId by remember(domain, tunnels) {
+        mutableStateOf(activeTunnelIds.firstOrNull() ?: tunnels.firstOrNull()?.id)
+    }
+    var exactOnly by rememberSaveable(domain) { mutableStateOf(false) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Add $domain to local-direct sites?") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("The rule resolves known A/AAAA answers and excludes those IPs from the VPN. Shared IPs can affect other sites.")
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    androidx.compose.material3.Switch(checked = exactOnly, onCheckedChange = { exactOnly = it })
+                    Text(if (exactOnly) "Only this hostname" else "Domain and subdomains")
+                }
+                if (tunnels.isEmpty()) {
+                    Text("Create a tunnel before adding a shared site.")
+                } else {
+                    Text("Tunnel:")
+                    tunnels.forEach { tunnel ->
+                        TextButton(onClick = { selectedTunnelId = tunnel.id }) {
+                            Text("${if (selectedTunnelId == tunnel.id) "✓ " else ""}${tunnel.name}${if (tunnel.id in activeTunnelIds) " (active)" else ""}")
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                enabled = selectedTunnelId != null,
+                onClick = {
+                    selectedTunnelId?.let {
+                        onApply(it, if (exactOnly) DomainMatchMode.EXACT else DomainMatchMode.SUFFIX)
+                    }
+                },
+            ) { Text("Add") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
 }

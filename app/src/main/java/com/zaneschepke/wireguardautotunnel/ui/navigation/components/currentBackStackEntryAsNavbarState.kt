@@ -44,10 +44,12 @@ import com.zaneschepke.wireguardautotunnel.ui.navigation.Route.AndroidIntegratio
 import com.zaneschepke.wireguardautotunnel.ui.navigation.Route.Appearance
 import com.zaneschepke.wireguardautotunnel.ui.navigation.Route.AutoTunnel
 import com.zaneschepke.wireguardautotunnel.ui.navigation.Route.Config
+import com.zaneschepke.wireguardautotunnel.ui.navigation.Route.ClientDiagnostics
 import com.zaneschepke.wireguardautotunnel.ui.navigation.Route.ConfigEdit
 import com.zaneschepke.wireguardautotunnel.ui.navigation.Route.ConfigGlobal
 import com.zaneschepke.wireguardautotunnel.ui.navigation.Route.Display
 import com.zaneschepke.wireguardautotunnel.ui.navigation.Route.Dns
+import com.zaneschepke.wireguardautotunnel.ui.navigation.Route.DomainSites
 import com.zaneschepke.wireguardautotunnel.ui.navigation.Route.Donate
 import com.zaneschepke.wireguardautotunnel.ui.navigation.Route.IPv6
 import com.zaneschepke.wireguardautotunnel.ui.navigation.Route.Language
@@ -183,6 +185,13 @@ fun currentRouteAsNavbarState(
                                 Icon(Icons.Rounded.Menu, stringResource(R.string.quick_actions))
                             }
                         },
+                    )
+                }
+                ClientDiagnostics -> {
+                    NavbarState(
+                        topLeading = { TvBackButton { navController.pop() } },
+                        showBottomItems = true,
+                        topTitle = "Client diagnostics",
                     )
                 }
                 ProxySettings -> {
@@ -324,6 +333,13 @@ fun currentRouteAsNavbarState(
                                 }
                             }
                         },
+                        showBottomItems = true,
+                    )
+                }
+                is DomainSites -> {
+                    NavbarState(
+                        topLeading = { TvBackButton { navController.pop() } },
+                        topTitle = "Sites",
                         showBottomItems = true,
                     )
                 }

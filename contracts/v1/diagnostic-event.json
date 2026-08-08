@@ -1,0 +1,11 @@
+{
+  "id": "9dd2b71e-7f67-4c2c-b20d-5b776f41f270",
+  "ts": "2026-08-08T10:00:00Z",
+  "source": "CLIENT",
+  "category": "DNS",
+  "severity": "WARNING",
+  "code": "DNS_RESOLUTION_FAILED",
+  "summary": "Could not resolve example.com",
+  "details": { "domain": "example.com", "status": "TIMEOUT" },
+  "tunnelId": 42
+}

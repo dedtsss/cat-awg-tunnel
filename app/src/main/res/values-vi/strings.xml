@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">WG Tunnel</string>
+    <string name="app_name">Cat AWG Tunnel</string>
     <string name="app_permission_title">Kiểm soát tunnel và các tính năng auto-tunnel.</string>
     <string name="app_permission_description">Control tunnels and auto-tunnel features.</string>
     <string name="error_file_extension">Tệp không phải .conf hay .zip</string>

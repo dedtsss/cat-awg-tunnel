@@ -306,6 +306,12 @@ fun SettingsScreen(
                 onClick = { navController.push(Route.Logs) },
             )
             SurfaceRow(
+                leading = { Icon(Icons.Outlined.MonitorHeart, contentDescription = null) },
+                title = "Client diagnostics",
+                description = { DescriptionText("Local incidents and sanitized diagnostic export") },
+                onClick = { navController.push(Route.ClientDiagnostics) },
+            )
+            SurfaceRow(
                 leading = { Icon(Icons.Outlined.SettingsBackupRestore, contentDescription = null) },
                 title = stringResource(R.string.backup_and_restore),
                 onClick = { showBackupSheet = true },

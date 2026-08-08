@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">WG Tunnel</string>
+    <string name="app_name">Cat AWG Tunnel</string>
     <string name="app_permission_title">Керування тунелями та функції автоматичного тунелювання.</string>
     <string name="app_permission_description">Керування тунелями та функції автоматичного тунелювання.</string>
     <string name="error_file_extension">Файл не є .conf або .zip файлом</string>

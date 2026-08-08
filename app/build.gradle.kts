@@ -33,6 +33,11 @@ configure<ApplicationExtension> {
     namespace = Constants.APP_ID
     compileSdk = Constants.TARGET_SDK
 
+    // The upstream baseline contains pre-existing lint debt. New Cat AWG code is
+    // still analyzed normally, while inherited findings remain visible in the
+    // checked-in baseline until they can be fixed upstream.
+    lint { baseline = file("lint-baseline.xml") }
+
     androidResources { generateLocaleConfig = true }
 
     dependenciesInfo {
@@ -54,7 +59,7 @@ configure<ApplicationExtension> {
     }
 
     defaultConfig {
-        applicationId = Constants.APP_ID
+        applicationId = Constants.APPLICATION_ID
         minSdk = Constants.MIN_SDK
         targetSdk = Constants.TARGET_SDK
         versionCode = Constants.VERSION_CODE
@@ -101,24 +106,24 @@ configure<ApplicationExtension> {
                 "proguard-rules.pro",
             )
             signingConfig = signingConfigs.getByName(Constants.RELEASE)
-            manifestPlaceholders["providerAuthority"] = "${Constants.APP_NAME}.provider"
-            buildConfigField("String", "FILE_PROVIDER_AUTHORITY", "\"${Constants.APP_NAME}.provider\"")
+            manifestPlaceholders["providerAuthority"] = "${Constants.APPLICATION_ID}.provider"
+            buildConfigField("String", "FILE_PROVIDER_AUTHORITY", "\"${Constants.APPLICATION_ID}.provider\"")
         }
 
         debug {
             applicationIdSuffix = ".debug"
-            resValue("string", "app_name", "WG Tunnel Debug")
+            resValue("string", "app_name", "Cat AWG Tunnel Debug")
             isDebuggable = true
-            manifestPlaceholders["providerAuthority"] = "${Constants.APP_NAME}.provider.debug"
-            buildConfigField("String", "FILE_PROVIDER_AUTHORITY", "\"${Constants.APP_NAME}.provider.debug\"")
+            manifestPlaceholders["providerAuthority"] = "${Constants.APPLICATION_ID}.provider.debug"
+            buildConfigField("String", "FILE_PROVIDER_AUTHORITY", "\"${Constants.APPLICATION_ID}.provider.debug\"")
         }
 
         create(Constants.NIGHTLY) {
             initWith(buildTypes.getByName(Constants.RELEASE))
             applicationIdSuffix = ".nightly"
-            resValue("string", "app_name", "WG Tunnel Nightly")
-            manifestPlaceholders["providerAuthority"] = "${Constants.APP_NAME}.provider.nightly"
-            buildConfigField("String", "FILE_PROVIDER_AUTHORITY", "\"${Constants.APP_NAME}.provider.nightly\"")
+            resValue("string", "app_name", "Cat AWG Tunnel Nightly")
+            manifestPlaceholders["providerAuthority"] = "${Constants.APPLICATION_ID}.provider.nightly"
+            buildConfigField("String", "FILE_PROVIDER_AUTHORITY", "\"${Constants.APPLICATION_ID}.provider.nightly\"")
         }
     }
 
@@ -195,6 +200,7 @@ androidComponents {
 }
 
 dependencies {
+    implementation(project(":catcore"))
     implementation(project(":logcatter"))
     implementation(project(":networkmonitor"))
     implementation(project(":tunnel"))
