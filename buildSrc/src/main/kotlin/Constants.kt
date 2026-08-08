@@ -1,6 +1,6 @@
 object Constants {
     const val VERSION_NAME = "5.2.1"
-    const val VERSION_CODE = 50201
+    const val VERSION_CODE = 50202
     const val TARGET_SDK = 37
     const val MIN_SDK = 26
 
@@ -13,5 +13,6 @@ object Constants {
 
     // build types
     const val RELEASE = "release"
+    const val CAT_TEST = "catTest"
     const val NIGHTLY = "nightly"
 }

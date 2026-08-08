@@ -62,7 +62,7 @@ configure<ApplicationExtension> {
         applicationId = Constants.APPLICATION_ID
         minSdk = Constants.MIN_SDK
         targetSdk = Constants.TARGET_SDK
-        versionCode = Constants.VERSION_CODE
+        versionCode = project.getCatTestVersionCode()
         versionName = Constants.VERSION_NAME
         buildConfigField("String", "GIT_SHA", "\"${project.getGitCommitHash()}\"")
 
@@ -91,6 +91,15 @@ configure<ApplicationExtension> {
             keyPassword =
                 LocalProperties.get("SIGNING_KEY_PASSWORD") ?: System.getenv("SIGNING_KEY_PASSWORD")
         }
+
+        if (!System.getenv("CAT_TEST_KEYSTORE_PATH").isNullOrBlank()) {
+            create(Constants.CAT_TEST) {
+                storeFile = file(requireNotNull(System.getenv("CAT_TEST_KEYSTORE_PATH")))
+                storePassword = requireNotNull(System.getenv("CAT_TEST_STORE_PASSWORD"))
+                keyAlias = requireNotNull(System.getenv("CAT_TEST_KEY_ALIAS"))
+                keyPassword = requireNotNull(System.getenv("CAT_TEST_KEY_PASSWORD"))
+            }
+        }
     }
 
     buildTypes {
@@ -115,6 +124,9 @@ configure<ApplicationExtension> {
             applicationIdSuffix = ".debug"
             resValue("string", "app_name", "Cat AWG Tunnel Debug")
             isDebuggable = true
+            if (!System.getenv("CAT_TEST_KEYSTORE_PATH").isNullOrBlank()) {
+                signingConfig = signingConfigs.getByName(Constants.CAT_TEST)
+            }
             manifestPlaceholders["providerAuthority"] = "${Constants.APPLICATION_ID}.provider.debug"
             buildConfigField("String", "FILE_PROVIDER_AUTHORITY", "\"${Constants.APPLICATION_ID}.provider.debug\"")
         }
