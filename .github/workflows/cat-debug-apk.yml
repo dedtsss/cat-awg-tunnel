@@ -111,10 +111,11 @@ jobs:
           script: |
             adb install "$RUNNER_TEMP/cat-awg-test-A.apk"
             adb shell pm clear com.dedtsss.catawgtunnel.debug
-            adb shell run-as com.dedtsss.catawgtunnel.debug mkdir files
-            adb shell run-as com.dedtsss.catawgtunnel.debug sh -c 'printf goal-e-update > files/goal-e-marker'
+            adb shell run-as com.dedtsss.catawgtunnel.debug mkdir -p /data/user/0/com.dedtsss.catawgtunnel.debug/files
+            adb shell run-as com.dedtsss.catawgtunnel.debug touch /data/user/0/com.dedtsss.catawgtunnel.debug/files/goal-e-marker
+            adb shell run-as com.dedtsss.catawgtunnel.debug sh -c 'printf goal-e-update > /data/user/0/com.dedtsss.catawgtunnel.debug/files/goal-e-marker'
             adb install -r "$RUNNER_TEMP/cat-awg-test-B.apk"
-            test "$(adb shell run-as com.dedtsss.catawgtunnel.debug cat files/goal-e-marker | tr -d '\r')" = goal-e-update
+            test "$(adb shell run-as com.dedtsss.catawgtunnel.debug cat /data/user/0/com.dedtsss.catawgtunnel.debug/files/goal-e-marker | tr -d '\r')" = goal-e-update
             ./gradlew :app:connectedStandaloneDebugAndroidTest --no-daemon --no-parallel --max-workers=1 \
               -PnoSplits=true -PcatTestVersionCode="$CAT_TEST_VERSION_B"
 
