@@ -109,14 +109,11 @@ jobs:
           profile: pixel_2
           emulator-options: -no-window -gpu off -no-snapshot -noaudio -no-boot-anim
           script: |
-            set -eu
-            package=com.dedtsss.catawgtunnel.debug
             adb install "$RUNNER_TEMP/cat-awg-test-A.apk"
-            adb shell pm clear "$package"
-            adb shell run-as "$package" sh -c 'printf goal-e-update > files/goal-e-marker'
+            adb shell pm clear com.dedtsss.catawgtunnel.debug
+            adb shell run-as com.dedtsss.catawgtunnel.debug sh -c 'printf goal-e-update > files/goal-e-marker'
             adb install -r "$RUNNER_TEMP/cat-awg-test-B.apk"
-            marker="$(adb shell run-as "$package" cat files/goal-e-marker | tr -d '\r')"
-            test "$marker" = goal-e-update
+            test "$(adb shell run-as com.dedtsss.catawgtunnel.debug cat files/goal-e-marker | tr -d '\r')" = goal-e-update
             ./gradlew :app:connectedStandaloneDebugAndroidTest --no-daemon --no-parallel --max-workers=1 \
               -PnoSplits=true -PcatTestVersionCode="$CAT_TEST_VERSION_B"
 
