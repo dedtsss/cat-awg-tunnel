@@ -86,11 +86,16 @@ jobs:
       - name: Verify signer and monotonic version codes
         run: |
           set -euo pipefail
-          signer_a="$(apksigner verify --print-certs "$RUNNER_TEMP/cat-awg-test-A.apk" | sed -n 's/.*certificate SHA-256 digest: //p')"
-          signer_b="$(apksigner verify --print-certs "$RUNNER_TEMP/cat-awg-test-B.apk" | sed -n 's/.*certificate SHA-256 digest: //p')"
+          sdk_root="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          test -n "$sdk_root"
+          apksigner_bin="$(find "$sdk_root/build-tools" -type f -name apksigner -print | sort -V | tail -1)"
+          aapt2_bin="$(find "$sdk_root/build-tools" -type f -name aapt2 -print | sort -V | tail -1)"
+          test -x "$apksigner_bin" && test -x "$aapt2_bin"
+          signer_a="$("$apksigner_bin" verify --print-certs "$RUNNER_TEMP/cat-awg-test-A.apk" | sed -n 's/.*certificate SHA-256 digest: //p')"
+          signer_b="$("$apksigner_bin" verify --print-certs "$RUNNER_TEMP/cat-awg-test-B.apk" | sed -n 's/.*certificate SHA-256 digest: //p')"
           test -n "$signer_a" && test "$signer_a" = "$signer_b"
-          code_a="$(aapt2 dump badging "$RUNNER_TEMP/cat-awg-test-A.apk" | sed -n "s/.*versionCode='\\([^']*\\)'.*/\\1/p")"
-          code_b="$(aapt2 dump badging "$RUNNER_TEMP/cat-awg-test-B.apk" | sed -n "s/.*versionCode='\\([^']*\\)'.*/\\1/p")"
+          code_a="$("$aapt2_bin" dump badging "$RUNNER_TEMP/cat-awg-test-A.apk" | sed -n "s/.*versionCode='\\([^']*\\)'.*/\\1/p")"
+          code_b="$("$aapt2_bin" dump badging "$RUNNER_TEMP/cat-awg-test-B.apk" | sed -n "s/.*versionCode='\\([^']*\\)'.*/\\1/p")"
           test "$code_b" -gt "$code_a"
           echo "Cat test-channel signer SHA-256: $signer_a"
           echo "Cat test-channel version codes: $code_a -> $code_b"
