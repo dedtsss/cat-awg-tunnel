@@ -109,7 +109,7 @@ jobs:
           profile: pixel_2
           emulator-options: -no-window -gpu off -no-snapshot -noaudio -no-boot-anim
           script: |
-            set -euo pipefail
+            set -eu
             package=com.dedtsss.catawgtunnel.debug
             adb install "$RUNNER_TEMP/cat-awg-test-A.apk"
             adb shell pm clear "$package"
