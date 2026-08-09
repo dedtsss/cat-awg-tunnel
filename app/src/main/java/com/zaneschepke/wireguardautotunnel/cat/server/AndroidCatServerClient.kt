@@ -8,6 +8,8 @@ import com.dedtsss.catawg.core.protocol.CatAiChatRequest
 import com.dedtsss.catawg.core.protocol.CatHealth
 import com.dedtsss.catawg.core.protocol.CatServerClient
 import com.dedtsss.catawg.core.protocol.CatServerCredentialStore
+import com.dedtsss.catawg.core.protocol.CatServerOperationException
+import com.dedtsss.catawg.core.protocol.CatServerOperationStage
 import com.dedtsss.catawg.core.protocol.ConfigValidationRequest
 import com.dedtsss.catawg.core.protocol.ConfigValidationResponse
 import com.dedtsss.catawg.core.protocol.IncidentsResponse
@@ -67,11 +69,17 @@ class AndroidCatServerClient(
                     normalizeCertificateFingerprint(bootstrap.certificateFingerprint)
             )
         val result = call { it.pair(deviceName.trim(), normalizedBootstrap) }
-        settingsStore.markPaired(
-            result.device.id,
-            result.device.name,
-            result.certificateFingerprint,
-        )
+        try {
+            settingsStore.markPaired(
+                result.device.id,
+                result.device.name,
+                result.certificateFingerprint,
+            )
+        } catch (error: Throwable) {
+            val staged = CatServerOperationException(CatServerOperationStage.PAIRING_SETTINGS, error)
+            settingsStore.recordError(CatServerErrorMapper.code(staged))
+            throw staged
+        }
         return result
     }
 
@@ -149,6 +157,7 @@ class CatServerAiProvider(
 object CatServerErrorMapper {
     fun code(error: Throwable): String {
         val chain = errorChain(error)
+        val stage = chain.firstNotNullOfOrNull { it as? CatServerOperationException }?.stage
         val response = chain.firstNotNullOfOrNull { it as? ResponseException }
         return when {
             chain.any { it is SSLPeerUnverifiedException } -> "HOSTNAME_MISMATCH"
@@ -159,6 +168,7 @@ object CatServerErrorMapper {
             response?.response?.status?.value in 401..403 -> "PAIRING_EXPIRED_OR_REVOKED"
             response?.response?.status?.value == 404 || response?.response?.status?.value == 406 ->
                 "INCOMPATIBLE_PROTOCOL"
+            stage != null -> stage.code
             chain.any {
                 it is UnknownHostException ||
                     it is ConnectException ||
@@ -174,6 +184,18 @@ object CatServerErrorMapper {
 
     fun userMessage(error: Throwable): String =
         when (code(error)) {
+            "HEALTH_FAILED" ->
+                "Cat Server health check failed. Re-check the HTTPS endpoint and certificate fingerprint."
+            "PAIRING_START_FAILED" ->
+                "Cat pairing could not start. Generate a fresh one-time bootstrap payload and try again."
+            "PAIRING_COMPLETE_FAILED" ->
+                "Cat pairing could not complete. Generate a fresh one-time bootstrap payload and try again."
+            "CREDENTIAL_PERSISTENCE_FAILED" ->
+                "Cat Server accepted pairing, but Android could not securely save its credential. Forget Cat Server, restart the app, then pair with a fresh payload."
+            "PAIRING_SETTINGS_FAILED" ->
+                "Cat Server credential was saved, but Android could not record the paired-device settings. Restart the app and check Cat Server status."
+            "CAPABILITIES_FAILED" ->
+                "Cat Server pairing succeeded, but its capabilities could not be read. The paired device is retained; retry the health check."
             "NOT_CONFIGURED" ->
                 "Cat Server is not configured. Enter an HTTPS server and verified certificate fingerprint."
             "TLS_FINGERPRINT_REQUIRED" ->
@@ -198,4 +220,15 @@ object CatServerErrorMapper {
             current = current.cause
         }
     }
+
+    private val CatServerOperationStage.code: String
+        get() =
+            when (this) {
+                CatServerOperationStage.HEALTH -> "HEALTH_FAILED"
+                CatServerOperationStage.PAIRING_START -> "PAIRING_START_FAILED"
+                CatServerOperationStage.PAIRING_COMPLETE -> "PAIRING_COMPLETE_FAILED"
+                CatServerOperationStage.CREDENTIAL_PERSISTENCE -> "CREDENTIAL_PERSISTENCE_FAILED"
+                CatServerOperationStage.PAIRING_SETTINGS -> "PAIRING_SETTINGS_FAILED"
+                CatServerOperationStage.CAPABILITIES -> "CAPABILITIES_FAILED"
+            }
 }

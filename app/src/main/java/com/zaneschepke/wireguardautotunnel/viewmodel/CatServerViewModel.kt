@@ -70,14 +70,15 @@ class CatServerViewModel(
                         bootstrapToken = bootstrapToken.trim(),
                     ),
                 )
-            val capabilities = client.capabilities()
+            // Pairing is committed before capabilities are requested. A transient capabilities
+            // failure must not turn a securely paired device back into a generic ERROR state.
+            val capabilitiesResult = runCatching { client.capabilities() }
             _state.update {
                 it.copy(
                     health = health,
-                    capabilities = capabilities,
-                    status =
-                        if (credentials.read() != null) CatServerConnectionStatus.CONNECTED
-                        else CatServerConnectionStatus.CONFIGURED,
+                    capabilities = capabilitiesResult.getOrNull() ?: it.capabilities,
+                    status = CatServerConnectionStatus.CONNECTED,
+                    error = capabilitiesResult.exceptionOrNull()?.let(CatServerErrorMapper::userMessage),
                     lastAction = "Paired device ${pairing.device.name}",
                 )
             }

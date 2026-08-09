@@ -22,6 +22,7 @@ import java.security.cert.X509Certificate
 import java.time.Instant
 import javax.net.ssl.SSLContext
 import javax.net.ssl.X509TrustManager
+import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
@@ -198,6 +199,25 @@ data class PairingBootstrap(val certificateFingerprint: String, val bootstrapTok
 }
 
 /**
+ * A non-secret boundary marker for a failed Cat pairing operation.
+ *
+ * The underlying cause is retained for local diagnostics, but the stage itself contains no
+ * bootstrap material, device token, response body, or cryptographic key data and is safe to show in
+ * the Android UI.
+ */
+enum class CatServerOperationStage {
+    HEALTH,
+    PAIRING_START,
+    PAIRING_COMPLETE,
+    CREDENTIAL_PERSISTENCE,
+    PAIRING_SETTINGS,
+    CAPABILITIES,
+}
+
+class CatServerOperationException(val stage: CatServerOperationStage, cause: Throwable) :
+    RuntimeException("Cat Server operation failed at ${stage.name}", cause)
+
+/**
  * Implement using Android Keystore-backed encrypted storage. No plaintext default implementation
  * exists.
  */
@@ -282,7 +302,9 @@ class KtorCatServerClient(
             credentials.read()?.certificateFingerprint
                 ?: initialCertificateFingerprint
                 ?: error("A verified server certificate fingerprint is required before connecting")
-        return pinnedClient(fingerprint).use { it.get(baseUrl + CatProtocolV1.HEALTH).body() }
+        return operation(CatServerOperationStage.HEALTH) {
+            pinnedClient(fingerprint).use { it.get(baseUrl + CatProtocolV1.HEALTH).body() }
+        }
     }
 
     override suspend fun pair(
@@ -297,11 +319,13 @@ class KtorCatServerClient(
             .let { normalized ->
                 bootstrapClient(normalized).use { client ->
                     val start: PairingStartResponse =
-                        client
-                            .post(baseUrl + CatProtocolV1.PAIRING_START) {
-                                header("X-Cat-Bootstrap-Token", normalized.bootstrapToken)
-                            }
-                            .body()
+                        operation(CatServerOperationStage.PAIRING_START) {
+                            client
+                                .post(baseUrl + CatProtocolV1.PAIRING_START) {
+                                    header("X-Cat-Bootstrap-Token", normalized.bootstrapToken)
+                                }
+                                .body()
+                        }
                     require(
                         sameFingerprint(
                             start.certificateFingerprint,
@@ -311,14 +335,20 @@ class KtorCatServerClient(
                         "Pairing response certificate identity differs from verified bootstrap material"
                     }
                     val completed: PairingCompleteResponse =
-                        client
-                            .post(baseUrl + CatProtocolV1.PAIRING_COMPLETE) {
-                                contentType(ContentType.Application.Json)
-                                setBody(
-                                    PairingCompleteRequest(start.pairingId, start.code, deviceName)
-                                )
-                            }
-                            .body()
+                        operation(CatServerOperationStage.PAIRING_COMPLETE) {
+                            client
+                                .post(baseUrl + CatProtocolV1.PAIRING_COMPLETE) {
+                                    contentType(ContentType.Application.Json)
+                                    setBody(
+                                        PairingCompleteRequest(
+                                            start.pairingId,
+                                            start.code,
+                                            deviceName,
+                                        )
+                                    )
+                                }
+                                .body()
+                        }
                     require(
                         sameFingerprint(
                             completed.certificateFingerprint,
@@ -327,22 +357,43 @@ class KtorCatServerClient(
                     ) {
                         "Pairing completion certificate identity differs from verified bootstrap material"
                     }
-                    credentials.write(
-                        CatServerCredentials(
-                            completed.deviceToken,
-                            completed.certificateFingerprint,
-                            completed.device.id,
+                    operation(CatServerOperationStage.CREDENTIAL_PERSISTENCE) {
+                        credentials.write(
+                            CatServerCredentials(
+                                completed.deviceToken,
+                                completed.certificateFingerprint,
+                                completed.device.id,
+                            )
                         )
-                    )
+                    }
                     completed
                 }
             }
 
-    override suspend fun capabilities(): ServerCapabilities = authenticated { client, token ->
-        client
-            .get(baseUrl + CatProtocolV1.CAPABILITIES) { header("Authorization", "Bearer $token") }
-            .body()
-    }
+    override suspend fun capabilities(): ServerCapabilities =
+        operation(CatServerOperationStage.CAPABILITIES) {
+            authenticated { client, token ->
+                client
+                    .get(baseUrl + CatProtocolV1.CAPABILITIES) {
+                        header("Authorization", "Bearer $token")
+                    }
+                    .body()
+            }
+        }
+
+    private suspend inline fun <T> operation(
+        stage: CatServerOperationStage,
+        block: suspend () -> T,
+    ): T =
+        try {
+            block()
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: CatServerOperationException) {
+            throw error
+        } catch (error: Throwable) {
+            throw CatServerOperationException(stage, error)
+        }
 
     override suspend fun postDiagnosticEvents(
         events: List<DiagnosticEvent>
