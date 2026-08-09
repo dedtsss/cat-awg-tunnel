@@ -3,6 +3,7 @@ package com.zaneschepke.wireguardautotunnel.data.cat
 import android.content.Context
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
+import android.util.AtomicFile
 import com.dedtsss.catawg.core.protocol.CatServerCredentialStore
 import com.dedtsss.catawg.core.protocol.CatServerCredentials
 import com.dedtsss.catawg.core.protocol.normalizeCertificateFingerprint
@@ -60,7 +61,7 @@ object CatCredentialEnvelopeCodec {
 class AndroidKeystoreCatServerCredentialStore(context: Context) : CatServerCredentialStore {
     private val keyAlias = "${context.packageName}.cat.server.credentials.v1"
     private val credentialFile = File(context.noBackupFilesDir, "cat-server-credentials.v1.bin")
-    private val tempFile = File(context.noBackupFilesDir, "cat-server-credentials.v1.tmp")
+    private val atomicCredentialFile = AtomicFile(credentialFile)
 
     private fun keyStore(): KeyStore = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
 
@@ -87,9 +88,9 @@ class AndroidKeystoreCatServerCredentialStore(context: Context) : CatServerCrede
 
     @Synchronized
     override fun read(): CatServerCredentials? {
-        if (!credentialFile.isFile) return null
+        if (!credentialFile.isFile && !File("${credentialFile.path}.bak").isFile) return null
         return runCatching {
-                val encoded = credentialFile.readBytes()
+                val encoded = atomicCredentialFile.openRead().use { it.readBytes() }
                 require(encoded.size > 13 && encoded[0].toInt() == FORMAT_VERSION.toInt()) {
                     "Invalid Cat credential envelope"
                 }
@@ -107,7 +108,7 @@ class AndroidKeystoreCatServerCredentialStore(context: Context) : CatServerCrede
             .getOrElse {
                 // A Keystore key can be invalidated by lock-screen migration or uninstall. Do not
                 // retain ciphertext that can no longer be used and never log the failed payload.
-                credentialFile.delete()
+                atomicCredentialFile.delete()
                 runCatching { keyStore().deleteEntry(keyAlias) }
                 null
             }
@@ -123,14 +124,21 @@ class AndroidKeystoreCatServerCredentialStore(context: Context) : CatServerCrede
                 .apply { init(Cipher.ENCRYPT_MODE, key(), GCMParameterSpec(TAG_BITS, iv)) }
                 .doFinal(CatCredentialEnvelopeCodec.encode(credentials))
         val encoded = byteArrayOf(FORMAT_VERSION, iv.size.toByte()) + iv + ciphertext
-        FileOutputStream(tempFile).use { it.write(encoded) }
-        check(tempFile.renameTo(credentialFile)) { "Could not commit Cat credential storage" }
+
+        var output: FileOutputStream? = null
+        try {
+            output = atomicCredentialFile.startWrite()
+            output.write(encoded)
+            atomicCredentialFile.finishWrite(output)
+        } catch (error: Throwable) {
+            output?.let { stream -> runCatching { atomicCredentialFile.failWrite(stream) } }
+            throw error
+        }
     }
 
     @Synchronized
     override fun clear() {
-        credentialFile.delete()
-        tempFile.delete()
+        atomicCredentialFile.delete()
         runCatching { keyStore().deleteEntry(keyAlias) }
     }
 
