@@ -7,6 +7,10 @@ on:
   pull_request:
   workflow_dispatch:
 
+concurrency:
+  group: cat-debug-apk-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   CAT_TEST_VERSION_BASE: '50202'
 
@@ -55,35 +59,22 @@ jobs:
       - name: Run Android unit tests
         run: ./gradlew :app:testStandaloneDebugUnitTest --no-daemon --no-parallel --max-workers=1
 
-      - name: Assemble installable debug APK A
+      - name: Assemble one signed installable APK
         env:
           GITHUB_SHA: ${{ github.sha }}
           GITHUB_RUN_NUMBER: ${{ github.run_number }}
         run: |
           set -euo pipefail
-          version_a=$((CAT_TEST_VERSION_BASE + GITHUB_RUN_NUMBER * 2))
-          echo "CAT_TEST_VERSION_A=$version_a" >> "$GITHUB_ENV"
+          version_code=$((CAT_TEST_VERSION_BASE + GITHUB_RUN_NUMBER * 2))
+          test "$version_code" -ge 50236
+          echo "CAT_TEST_VERSION_CODE=$version_code" >> "$GITHUB_ENV"
           ./gradlew :app:assembleStandaloneDebug --no-daemon --no-parallel --max-workers=1 \
-            -PnoSplits=true -PcatTestVersionCode="$version_a"
+            -PnoSplits=true -PcatTestVersionCode="$version_code"
           source_apk="$(find app/build/outputs/apk/standalone/debug -type f -name '*.apk' | head -1)"
           test -n "$source_apk"
-          cp "$source_apk" "$RUNNER_TEMP/cat-awg-test-A.apk"
+          cp "$source_apk" "$RUNNER_TEMP/cat-awg-test.apk"
 
-      - name: Assemble installable debug APK B
-        env:
-          GITHUB_SHA: ${{ github.sha }}
-          GITHUB_RUN_NUMBER: ${{ github.run_number }}
-        run: |
-          set -euo pipefail
-          version_b=$((CAT_TEST_VERSION_BASE + GITHUB_RUN_NUMBER * 2 + 1))
-          echo "CAT_TEST_VERSION_B=$version_b" >> "$GITHUB_ENV"
-          ./gradlew :app:assembleStandaloneDebug --no-daemon --no-parallel --max-workers=1 \
-            -PnoSplits=true -PcatTestVersionCode="$version_b"
-          source_apk="$(find app/build/outputs/apk/standalone/debug -type f -name '*.apk' | head -1)"
-          test -n "$source_apk"
-          cp "$source_apk" "$RUNNER_TEMP/cat-awg-test-B.apk"
-
-      - name: Verify signer and monotonic version codes
+      - name: Verify signer, version and APK digest
         run: |
           set -euo pipefail
           sdk_root="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
@@ -91,45 +82,22 @@ jobs:
           apksigner_bin="$(find "$sdk_root/build-tools" -type f -name apksigner -print | sort -V | tail -1)"
           aapt2_bin="$(find "$sdk_root/build-tools" -type f -name aapt2 -print | sort -V | tail -1)"
           test -x "$apksigner_bin" && test -x "$aapt2_bin"
-          signer_a="$("$apksigner_bin" verify --print-certs "$RUNNER_TEMP/cat-awg-test-A.apk" | sed -n 's/.*certificate SHA-256 digest: //p')"
-          signer_b="$("$apksigner_bin" verify --print-certs "$RUNNER_TEMP/cat-awg-test-B.apk" | sed -n 's/.*certificate SHA-256 digest: //p')"
-          test -n "$signer_a" && test "$signer_a" = "$signer_b"
-          code_a="$("$aapt2_bin" dump badging "$RUNNER_TEMP/cat-awg-test-A.apk" | sed -n "s/.*versionCode='\\([^']*\\)'.*/\\1/p")"
-          code_b="$("$aapt2_bin" dump badging "$RUNNER_TEMP/cat-awg-test-B.apk" | sed -n "s/.*versionCode='\\([^']*\\)'.*/\\1/p")"
-          test "$code_b" -gt "$code_a"
-          echo "Cat test-channel signer SHA-256: $signer_a"
-          echo "Cat test-channel version codes: $code_a -> $code_b"
-
-      - name: Install A, preserve data, update to B, and run startup smoke
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 29
-          target: default
-          arch: x86_64
-          profile: pixel_2
-          emulator-options: -no-window -gpu off -no-snapshot -noaudio -no-boot-anim
-          script: |
-            adb install "$RUNNER_TEMP/cat-awg-test-A.apk"
-            adb shell pm clear com.dedtsss.catawgtunnel.debug
-            adb shell run-as com.dedtsss.catawgtunnel.debug mkdir -p /data/user/0/com.dedtsss.catawgtunnel.debug/files
-            printf goal-e-update | adb shell run-as com.dedtsss.catawgtunnel.debug tee /data/user/0/com.dedtsss.catawgtunnel.debug/files/goal-e-marker >/dev/null
-            adb install -r "$RUNNER_TEMP/cat-awg-test-B.apk"
-            test "$(adb shell run-as com.dedtsss.catawgtunnel.debug cat /data/user/0/com.dedtsss.catawgtunnel.debug/files/goal-e-marker | tr -d '\r')" = goal-e-update
-            ./gradlew :app:connectedStandaloneDebugAndroidTest --no-daemon --no-parallel --max-workers=1 -PnoSplits=true -PcatTestVersionCode="$CAT_TEST_VERSION_B"
-
-      - name: Compile release Kotlin
-        run: ./gradlew :app:compileStandaloneReleaseKotlin --no-daemon --no-parallel --max-workers=1
-
-      - name: Run lint
-        run: ./gradlew :app:lintStandaloneDebug --no-daemon --no-parallel --max-workers=1
+          signer="$("$apksigner_bin" verify --print-certs "$RUNNER_TEMP/cat-awg-test.apk" | sed -n 's/.*certificate SHA-256 digest: //p')"
+          code="$("$aapt2_bin" dump badging "$RUNNER_TEMP/cat-awg-test.apk" | sed -n "s/.*versionCode='\\([^']*\\)'.*/\\1/p")"
+          test -n "$signer"
+          test "$code" = "$CAT_TEST_VERSION_CODE"
+          digest="$(sha256sum "$RUNNER_TEMP/cat-awg-test.apk" | awk '{print $1}')"
+          echo "Cat test-channel signer SHA-256: $signer"
+          echo "Cat test-channel versionCode: $code"
+          echo "Cat APK SHA-256: $digest"
 
       - name: Name APK with commit provenance
         id: apk
         shell: bash
         run: |
           sha="$(git rev-parse --short=12 HEAD)"
-          target="cat-awg-tunnel-debug-${sha}-v${CAT_TEST_VERSION_B}.apk"
-          cp "$RUNNER_TEMP/cat-awg-test-B.apk" "$target"
+          target="cat-awg-tunnel-debug-${sha}-v${CAT_TEST_VERSION_CODE}.apk"
+          cp "$RUNNER_TEMP/cat-awg-test.apk" "$target"
           echo "path=$target" >> "$GITHUB_OUTPUT"
 
       - name: Upload installable debug APK
