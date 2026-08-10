@@ -66,7 +66,7 @@ jobs:
           target: aosp_atd
           arch: x86_64
           profile: pixel_2
-          emulator-options: -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect
+          emulator-options: -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect -no-snapshot -no-snapshot-save
           disable-animations: true
           script: >-
             ./gradlew :app:connectedStandaloneDebugAndroidTest
