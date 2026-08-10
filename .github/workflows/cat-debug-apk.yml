@@ -65,7 +65,7 @@ jobs:
           api-level: 35
           target: default
           arch: x86_64
-          profile: Pixel_6
+          profile: pixel_6
           emulator-options: -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect
           disable-animations: true
           script: >-
