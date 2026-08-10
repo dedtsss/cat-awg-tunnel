@@ -28,9 +28,11 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.dedtsss.catawg.core.diagnostics.DiagnosticExportBundle
 import com.dedtsss.catawg.core.diagnostics.DiagnosticExportWindow
+import com.zaneschepke.wireguardautotunnel.R
 import com.zaneschepke.wireguardautotunnel.viewmodel.ClientDiagnosticsViewModel
 import java.io.BufferedOutputStream
 import java.nio.charset.StandardCharsets
@@ -59,7 +61,7 @@ fun ClientDiagnosticsScreen(viewModel: ClientDiagnosticsViewModel) {
                     }
                     .onSuccess { viewModel.refresh() }
                     .onFailure {
-                        viewModel.reportError(it.message ?: "Could not export diagnostics")
+                        viewModel.reportError(context.getString(R.string.diagnostics_export_error))
                     }
             }
         }
@@ -77,7 +79,7 @@ fun ClientDiagnosticsScreen(viewModel: ClientDiagnosticsViewModel) {
                         }
                     }
                     .onFailure {
-                        viewModel.reportError(it.message ?: "Could not download Cat Server bundle")
+                        viewModel.reportError(context.getString(R.string.diagnostics_bundle_error))
                     }
             }
         }
@@ -86,31 +88,47 @@ fun ClientDiagnosticsScreen(viewModel: ClientDiagnosticsViewModel) {
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text("Diagnostics", style = MaterialTheme.typography.headlineSmall)
-        Text(
-            "Deterministic local evidence remains available without Cat Server. Server correlation is shown separately and is never inferred from a client-only event."
-        )
-        Text("Stored client events: ${state.eventCount}; local incidents: ${state.incidents.size}")
+        Text(stringResource(R.string.diagnostics_title), style = MaterialTheme.typography.headlineSmall)
+        Text(stringResource(R.string.diagnostics_intro))
+        Text(stringResource(R.string.diagnostics_counts, state.eventCount, state.incidents.size))
 
         Card(modifier = Modifier.fillMaxWidth()) {
             Column(
                 modifier = Modifier.padding(12.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                Text("Cat Server sync", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    stringResource(R.string.diagnostics_server_sync),
+                    style = MaterialTheme.typography.titleMedium,
+                )
                 Text(
                     if (state.serverSettings.isPaired)
-                        "Paired server: ${state.serverSettings.serverUrl}"
-                    else "No Cat Server paired; standalone diagnostics mode is active."
+                        stringResource(
+                            R.string.diagnostics_paired_server,
+                            state.serverSettings.serverUrl.orEmpty(),
+                        )
+                    else stringResource(R.string.diagnostics_standalone)
                 )
-                Text("Last successful sync: ${state.serverSettings.lastSyncAt ?: "Never"}")
-                Text("Pending/failed events: ${state.serverSettings.pendingSyncCount}")
-                state.serverSettings.lastSyncErrorCode?.let { Text("Last sync state: $it") }
+                Text(
+                    stringResource(
+                        R.string.diagnostics_last_sync,
+                        state.serverSettings.lastSyncAt ?: stringResource(R.string.never),
+                    )
+                )
+                Text(
+                    stringResource(
+                        R.string.diagnostics_pending,
+                        state.serverSettings.pendingSyncCount,
+                    )
+                )
+                state.serverSettings.lastSyncErrorCode?.let {
+                    Text(stringResource(R.string.diagnostics_last_state, it))
+                }
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
-                    Text("Upload CLIENT events")
+                    Text(stringResource(R.string.diagnostics_upload_client))
                     Switch(
                         checked = state.serverSettings.diagnosticsUploadEnabled,
                         onCheckedChange = viewModel::setDiagnosticsUploadEnabled,
@@ -120,7 +138,15 @@ fun ClientDiagnosticsScreen(viewModel: ClientDiagnosticsViewModel) {
                     onClick = viewModel::syncNow,
                     enabled = !state.syncBusy && state.serverSettings.isPaired,
                 ) {
-                    Text(if (state.syncBusy) "Syncing…" else "Sync now")
+                    Text(
+                        stringResource(
+                            if (state.syncBusy) {
+                                R.string.diagnostics_syncing
+                            } else {
+                                R.string.diagnostics_sync_now
+                            }
+                        )
+                    )
                 }
                 if (state.serverSettings.isPaired) {
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -133,7 +159,12 @@ fun ClientDiagnosticsScreen(viewModel: ClientDiagnosticsViewModel) {
                                     )
                                 }
                             ) {
-                                Text("Server bundle ${window.minutes}m")
+                                Text(
+                                    stringResource(
+                                        R.string.diagnostics_server_bundle,
+                                        window.minutes,
+                                    )
+                                )
                             }
                         }
                     }
@@ -142,7 +173,10 @@ fun ClientDiagnosticsScreen(viewModel: ClientDiagnosticsViewModel) {
             }
         }
 
-        Text("Local client evidence", style = MaterialTheme.typography.titleMedium)
+        Text(
+            stringResource(R.string.diagnostics_local_evidence),
+            style = MaterialTheme.typography.titleMedium,
+        )
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             DiagnosticExportWindow.entries.take(2).forEach { window ->
                 Button(
@@ -151,10 +185,7 @@ fun ClientDiagnosticsScreen(viewModel: ClientDiagnosticsViewModel) {
                         exportLauncher.launch("cat-diagnostics-${window.minutes}m.zip")
                     }
                 ) {
-                    Text(
-                        if (window == DiagnosticExportWindow.MINUTES_15) "Export 15m"
-                        else "Export 1h"
-                    )
+                    Text(stringResource(R.string.diagnostics_export_window, window.shortLabel()))
                 }
             }
         }
@@ -166,29 +197,30 @@ fun ClientDiagnosticsScreen(viewModel: ClientDiagnosticsViewModel) {
                         exportLauncher.launch("cat-diagnostics-${window.minutes}m.zip")
                     }
                 ) {
-                    Text(
-                        if (window == DiagnosticExportWindow.HOURS_6) "Export 6h" else "Export 24h"
-                    )
+                    Text(stringResource(R.string.diagnostics_export_window, window.shortLabel()))
                 }
             }
         }
-        TextButton(onClick = viewModel::refresh) { Text("Refresh history") }
+        TextButton(onClick = viewModel::refresh) {
+            Text(stringResource(R.string.diagnostics_refresh_history))
+        }
         state.incidents.forEach { incident ->
-            IncidentCard("CLIENT · ${incident.severity}", incident)
+            IncidentCard(stringResource(R.string.diagnostics_source_client), incident)
         }
 
         if (state.serverSettings.isPaired) {
-            Text("Server/correlated evidence", style = MaterialTheme.typography.titleMedium)
+            Text(
+                stringResource(R.string.diagnostics_server_evidence),
+                style = MaterialTheme.typography.titleMedium,
+            )
             if (state.serverEvidenceAvailable) {
                 if (state.serverIncidents.isEmpty())
-                    Text("Cat Server returned no incidents for the last 48 hours.")
+                    Text(stringResource(R.string.diagnostics_no_server_incidents))
                 state.serverIncidents.forEach { incident ->
-                    IncidentCard("SERVER · ${incident.severity}", incident)
+                    IncidentCard(stringResource(R.string.diagnostics_source_server), incident)
                 }
             } else {
-                Text(
-                    "Server evidence unavailable. Local client-only inference is not proof of a server failure."
-                )
+                Text(stringResource(R.string.diagnostics_server_unavailable))
             }
         }
 
@@ -200,15 +232,16 @@ fun ClientDiagnosticsScreen(viewModel: ClientDiagnosticsViewModel) {
                         modifier = Modifier.padding(12.dp),
                         verticalArrangement = Arrangement.spacedBy(7.dp),
                     ) {
-                        Text("AI Assistant", style = MaterialTheme.typography.titleMedium)
                         Text(
-                            "AI runs through Cat Server; no provider key is stored in the APK. Replies are candidate advice only."
+                            stringResource(R.string.diagnostics_ai_title),
+                            style = MaterialTheme.typography.titleMedium,
                         )
+                        Text(stringResource(R.string.diagnostics_ai_intro))
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
                         ) {
-                            Text("Allow requested context memory")
+                            Text(stringResource(R.string.diagnostics_ai_memory))
                             Switch(
                                 checked = state.serverSettings.memoryEnabled,
                                 onCheckedChange = viewModel::setMemoryEnabled,
@@ -218,18 +251,31 @@ fun ClientDiagnosticsScreen(viewModel: ClientDiagnosticsViewModel) {
                             value = aiMessage,
                             onValueChange = { aiMessage = it },
                             modifier = Modifier.fillMaxWidth(),
-                            label = { Text("Ask about an incident or AWG parameter") },
+                            label = { Text(stringResource(R.string.diagnostics_ai_prompt)) },
                             minLines = 2,
                         )
                         Button(
                             onClick = { viewModel.askAi(aiMessage) },
                             enabled = aiMessage.isNotBlank() && !state.aiBusy,
                         ) {
-                            Text(if (state.aiBusy) "Asking…" else "Ask AI")
+                            Text(
+                                stringResource(
+                                    if (state.aiBusy) {
+                                        R.string.diagnostics_asking
+                                    } else {
+                                        R.string.diagnostics_ask_ai
+                                    }
+                                )
+                            )
                         }
                         state.aiResponse?.let { response -> Text(response) }
                         state.aiRecommendations.forEach { recommendation ->
-                            Text("Candidate advice: $recommendation")
+                            Text(
+                                stringResource(
+                                    R.string.diagnostics_candidate_advice,
+                                    recommendation,
+                                )
+                            )
                         }
                     }
                 }
@@ -242,20 +288,47 @@ fun ClientDiagnosticsScreen(viewModel: ClientDiagnosticsViewModel) {
 }
 
 @Composable
-private fun IncidentCard(title: String, incident: com.dedtsss.catawg.core.diagnostics.Incident) {
+private fun IncidentCard(source: String, incident: com.dedtsss.catawg.core.diagnostics.Incident) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier.padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            Text("$title · ${incident.classification}")
-            Text("${incident.status}; confidence ${"%.0f".format(incident.confidence * 100)}%")
-            Text("Started ${incident.startAt}${incident.endAt?.let { "; ended $it" }.orEmpty()}")
+            Text(stringResource(R.string.diagnostics_incident_title, source, incident.classification))
+            Text(
+                stringResource(
+                    R.string.diagnostics_incident_status,
+                    incident.status,
+                    (incident.confidence * 100).toInt(),
+                )
+            )
+            Text(
+                stringResource(
+                    R.string.diagnostics_incident_time,
+                    incident.startAt,
+                    incident.endAt
+                        ?.let { stringResource(R.string.diagnostics_incident_ended, it) }
+                        .orEmpty(),
+                )
+            )
             incident.probableCause?.let { Text(it) }
-            incident.recommendations.forEach { Text("Recommendation: $it") }
+            incident.recommendations.forEach {
+                Text(stringResource(R.string.diagnostics_recommendation, it))
+            }
         }
     }
 }
+
+@Composable
+private fun DiagnosticExportWindow.shortLabel(): String =
+    stringResource(
+        when (this) {
+            DiagnosticExportWindow.MINUTES_15 -> R.string.diagnostics_window_15
+            DiagnosticExportWindow.HOUR_1 -> R.string.diagnostics_window_1h
+            DiagnosticExportWindow.HOURS_6 -> R.string.diagnostics_window_6h
+            DiagnosticExportWindow.HOURS_24 -> R.string.diagnostics_window_24h
+        }
+    )
 
 private fun writeBundle(
     resolver: ContentResolver,

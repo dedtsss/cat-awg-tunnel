@@ -27,11 +27,13 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.dedtsss.catawg.core.routing.DomainMatchMode
 import com.dedtsss.catawg.core.routing.DomainRouteTarget
 import com.dedtsss.catawg.core.routing.DomainRule
 import com.dedtsss.catawg.core.routing.SharedIpIndex
+import com.zaneschepke.wireguardautotunnel.R
 import com.zaneschepke.wireguardautotunnel.viewmodel.DomainSitesViewModel
 import kotlinx.coroutines.launch
 
@@ -52,10 +54,12 @@ fun DomainSitesScreen(viewModel: DomainSitesViewModel) {
                 runCatching {
                         val data = if (exportJson) viewModel.exportJson() else viewModel.exportTxt()
                         requireNotNull(context.contentResolver.openOutputStream(uri)) {
-                            "Could not open selected export destination"
+                            context.getString(R.string.domain_sites_output_error)
                         }.bufferedWriter().use { it.write(data) }
                     }
-                    .onFailure { viewModel.reportError(it.message ?: "Could not export domain rules") }
+                    .onFailure {
+                        viewModel.reportError(context.getString(R.string.domain_sites_export_error))
+                    }
             }
         }
     val importLauncher =
@@ -64,11 +68,13 @@ fun DomainSitesScreen(viewModel: DomainSitesViewModel) {
             scope.launch {
                 runCatching {
                         requireNotNull(context.contentResolver.openInputStream(uri)) {
-                            "Could not open selected import file"
+                            context.getString(R.string.domain_sites_input_error)
                         }.bufferedReader().use { it.readText() }
                     }
                     .onSuccess(viewModel::importRules)
-                    .onFailure { viewModel.reportError(it.message ?: "Could not import domain rules") }
+                    .onFailure {
+                        viewModel.reportError(context.getString(R.string.domain_sites_import_error))
+                    }
             }
         }
     val filtered = state.rules.filter { it.domain.contains(search, ignoreCase = true) }
@@ -84,13 +90,19 @@ fun DomainSitesScreen(viewModel: DomainSitesViewModel) {
             value = search,
             onValueChange = { search = it },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Search sites") },
+            label = { Text(stringResource(R.string.domain_sites_search)) },
             singleLine = true,
         )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = { showAdd = true }) { Text("Add site") }
-            TextButton(onClick = viewModel::refresh, enabled = !state.isWorking) { Text("Refresh IPs") }
-            TextButton(onClick = { showDiagnose = true }) { Text("Why does this site not work?") }
+            Button(onClick = { showAdd = true }) {
+                Text(stringResource(R.string.domain_sites_add))
+            }
+            TextButton(onClick = viewModel::refresh, enabled = !state.isWorking) {
+                Text(stringResource(R.string.domain_sites_refresh_ips))
+            }
+            TextButton(onClick = { showDiagnose = true }) {
+                Text(stringResource(R.string.domain_sites_diagnose))
+            }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             TextButton(
@@ -98,22 +110,22 @@ fun DomainSitesScreen(viewModel: DomainSitesViewModel) {
                     exportJson = true
                     exportLauncher.launch("cat-domain-rules.json")
                 },
-            ) { Text("Export JSON") }
+            ) { Text(stringResource(R.string.domain_sites_export_json)) }
             TextButton(
                 onClick = {
                     exportJson = false
                     exportLauncher.launch("cat-domain-rules.txt")
                 },
-            ) { Text("Export TXT") }
+            ) { Text(stringResource(R.string.domain_sites_export_txt)) }
             TextButton(onClick = { importLauncher.launch(arrayOf("application/json", "text/plain")) }) {
-                Text("Import")
+                Text(stringResource(R.string.import_action))
             }
         }
         state.error?.let { error ->
             Card(modifier = Modifier.fillMaxWidth()) {
                 Row(modifier = Modifier.padding(12.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text(error, modifier = Modifier.weight(1f))
-                    TextButton(onClick = viewModel::clearError) { Text("Dismiss") }
+                    TextButton(onClick = viewModel::clearError) { Text(stringResource(R.string.dismiss)) }
                 }
             }
         }
@@ -153,23 +165,60 @@ fun DomainSitesScreen(viewModel: DomainSitesViewModel) {
         )
     }
     state.diagnosis?.let { diagnosis ->
-        val sourceByRuleId = state.rules.associateBy { it.id }
         AlertDialog(
             onDismissRequest = viewModel::dismissDiagnosis,
-            confirmButton = { TextButton(onClick = viewModel::dismissDiagnosis) { Text("Close") } },
-            title = { Text("Site diagnostics: ${diagnosis.domain}") },
+            confirmButton = {
+                TextButton(onClick = viewModel::dismissDiagnosis) { Text(stringResource(R.string.close)) }
+            },
+            title = { Text(stringResource(R.string.domain_sites_diagnostics_title, diagnosis.domain)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(
-                        "IPv4: ${diagnosis.ipv4.joinToString { it.describe(it.ruleId?.let(sourceByRuleId::get)?.source?.name) }.ifBlank { "none" }}"
+                        stringResource(
+                            R.string.domain_sites_ipv4,
+                            diagnosis.ipv4
+                                .joinToString { it.describe() }
+                                .ifBlank { stringResource(R.string.domain_sites_none) },
+                        )
                     )
                     Text(
-                        "IPv6: ${diagnosis.ipv6.joinToString { it.describe(it.ruleId?.let(sourceByRuleId::get)?.source?.name) }.ifBlank { "none" }}"
+                        stringResource(
+                            R.string.domain_sites_ipv6,
+                            diagnosis.ipv6
+                                .joinToString { it.describe() }
+                                .ifBlank { stringResource(R.string.domain_sites_none) },
+                        )
                     )
-                    Text("Cache: ${if (diagnosis.stale) "stale" else "current"}; changed IP: ${diagnosis.changedIp}")
-                    Text("Lookup status: ${diagnosis.resolutionStatus ?: "unknown"}")
+                    Text(
+                        stringResource(
+                            R.string.domain_sites_cache,
+                            stringResource(
+                                if (diagnosis.stale) {
+                                    R.string.domain_sites_cache_stale
+                                } else {
+                                    R.string.domain_sites_cache_current
+                                }
+                            ),
+                            stringResource(
+                                if (diagnosis.changedIp) {
+                                    R.string.domain_sites_yes
+                                } else {
+                                    R.string.domain_sites_no
+                                }
+                            ),
+                        )
+                    )
+                    Text(
+                        stringResource(
+                            R.string.domain_sites_lookup_status,
+                            diagnosis.resolutionStatus?.let { status ->
+                                resolutionStatusLabel(status)
+                            }
+                                ?: stringResource(R.string.domain_sites_unknown),
+                        )
+                    )
                     diagnosis.ipv4.flatMap { it.sharedWithDomains }.distinct().takeIf { it.isNotEmpty() }?.let {
-                        Text("Shared IP warning: ${it.joinToString()}")
+                        Text(stringResource(R.string.domain_sites_shared_ip_warning, it.joinToString()))
                     }
                     Text(diagnosis.evidenceNote)
                 }
@@ -191,33 +240,62 @@ private fun DomainRuleRow(
                 Text(rule.domain, modifier = Modifier.weight(1f))
                 Switch(checked = rule.enabled, onCheckedChange = { onToggle() })
             }
-            Text("${rule.matchMode} • ${rule.routeTarget} • ${rule.source}")
-            Text("IPv4: ${rule.resolvedIpv4.filter { it.isCurrent }.joinToString { it.address }.ifBlank { "not resolved" }}")
-            Text("IPv6: ${rule.resolvedIpv6.filter { it.isCurrent }.joinToString { it.address }.ifBlank { "not resolved" }}")
+            Text(
+                stringResource(
+                    R.string.domain_sites_rule_metadata,
+                    matchModeLabel(rule.matchMode),
+                    routeTargetLabel(rule.routeTarget),
+                    ruleSourceLabel(rule.source),
+                )
+            )
+            Text(
+                stringResource(
+                    R.string.domain_sites_ipv4,
+                    rule.resolvedIpv4
+                        .filter { it.isCurrent }
+                        .joinToString { it.address }
+                        .ifBlank { stringResource(R.string.domain_sites_not_resolved) },
+                )
+            )
+            Text(
+                stringResource(
+                    R.string.domain_sites_ipv6,
+                    rule.resolvedIpv6
+                        .filter { it.isCurrent }
+                        .joinToString { it.address }
+                        .ifBlank { stringResource(R.string.domain_sites_not_resolved) },
+                )
+            )
             val historical = (rule.resolvedIpv4 + rule.resolvedIpv6).count { !it.isCurrent }
-            if (historical > 0) Text("Historical IPs retained for diagnostics: $historical")
-            if (sharedDomains.isNotEmpty()) Text("Shared IP warning: ${sharedDomains.joinToString()}")
-            Text("Last resolve: ${rule.lastResolvedAt ?: rule.lastResolveStatus}")
-            rule.comment?.let { Text("Note: $it") }
-            TextButton(onClick = onDelete) { Text("Delete") }
+            if (historical > 0) {
+                Text(stringResource(R.string.domain_sites_historical_ips, historical))
+            }
+            if (sharedDomains.isNotEmpty()) {
+                Text(
+                    stringResource(
+                        R.string.domain_sites_shared_ip_warning,
+                        sharedDomains.joinToString(),
+                    )
+                )
+            }
+            Text(
+                stringResource(
+                    R.string.domain_sites_last_resolve,
+                    rule.lastResolvedAt ?: resolutionStatusLabel(rule.lastResolveStatus),
+                )
+            )
+            rule.comment?.let { Text(stringResource(R.string.domain_sites_note, it)) }
+            TextButton(onClick = onDelete) { Text(stringResource(R.string.delete)) }
         }
     }
 }
 
-private fun com.dedtsss.catawg.core.routing.DiagnosedAddress.describe(source: String?): String =
+private fun com.dedtsss.catawg.core.routing.DiagnosedAddress.describe(): String =
     buildString {
         append(address)
         append(" → ")
         append(route)
-        ruleDomain?.let { domain ->
-            append(" via ")
-            append(domain)
-            source?.let {
-                append(" (")
-                append(it)
-                append(")")
-            }
-        }
+        ruleDomain?.let { append(" ($it)") }
     }
 
 @Composable
@@ -233,17 +311,47 @@ private fun AddDomainDialog(
         onDismissRequest = onDismiss,
         confirmButton = {
             TextButton(onClick = { onAdd(domain, if (exact) DomainMatchMode.EXACT else DomainMatchMode.SUFFIX, if (localDirect) DomainRouteTarget.LOCAL_DIRECT else DomainRouteTarget.DEFAULT_TUNNEL, comment) }) {
-                Text("Add")
+                Text(stringResource(R.string.add))
             }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
-        title = { Text("Add site") },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
+        title = { Text(stringResource(R.string.domain_sites_add)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(value = domain, onValueChange = { domain = it }, label = { Text("Domain or URL") })
-                Row { Switch(checked = exact, onCheckedChange = { exact = it }); Text(if (exact) "Exact hostname" else "Domain + subdomains") }
-                Row { Switch(checked = localDirect, onCheckedChange = { localDirect = it }); Text(if (localDirect) "Local direct" else "Default tunnel") }
-                OutlinedTextField(value = comment, onValueChange = { comment = it }, label = { Text("Comment (optional)") })
+                OutlinedTextField(
+                    value = domain,
+                    onValueChange = { domain = it },
+                    label = { Text(stringResource(R.string.domain_sites_domain_or_url)) },
+                )
+                Row {
+                    Switch(checked = exact, onCheckedChange = { exact = it })
+                    Text(
+                        stringResource(
+                            if (exact) {
+                                R.string.domain_sites_exact_hostname
+                            } else {
+                                R.string.domain_sites_suffix
+                            }
+                        )
+                    )
+                }
+                Row {
+                    Switch(checked = localDirect, onCheckedChange = { localDirect = it })
+                    Text(
+                        stringResource(
+                            if (localDirect) {
+                                R.string.domain_sites_local_direct
+                            } else {
+                                R.string.domain_sites_default_tunnel
+                            }
+                        )
+                    )
+                }
+                OutlinedTextField(
+                    value = comment,
+                    onValueChange = { comment = it },
+                    label = { Text(stringResource(R.string.domain_sites_comment_optional)) },
+                )
             }
         },
     )
@@ -254,9 +362,68 @@ private fun DiagnoseDomainDialog(onDismiss: () -> Unit, onRun: (String) -> Unit)
     var value by rememberSaveable { mutableStateOf("") }
     AlertDialog(
         onDismissRequest = onDismiss,
-        confirmButton = { TextButton(onClick = { onRun(value) }) { Text("Diagnose") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
-        title = { Text("Why does this site not work?") },
-        text = { OutlinedTextField(value = value, onValueChange = { value = it }, label = { Text("Domain or URL") }) },
+        confirmButton = {
+            TextButton(onClick = { onRun(value) }) { Text(stringResource(R.string.diagnose)) }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
+        title = { Text(stringResource(R.string.domain_sites_diagnose)) },
+        text = {
+            OutlinedTextField(
+                value = value,
+                onValueChange = { value = it },
+                label = { Text(stringResource(R.string.domain_sites_domain_or_url)) },
+            )
+        },
     )
 }
+
+@Composable
+private fun matchModeLabel(value: DomainMatchMode): String =
+    stringResource(
+        if (value == DomainMatchMode.EXACT) {
+            R.string.domain_sites_match_exact
+        } else {
+            R.string.domain_sites_match_suffix
+        }
+    )
+
+@Composable
+private fun routeTargetLabel(value: DomainRouteTarget): String =
+    stringResource(
+        when (value) {
+            DomainRouteTarget.LOCAL_DIRECT -> R.string.domain_sites_route_local
+            DomainRouteTarget.DEFAULT_TUNNEL -> R.string.domain_sites_route_default
+            DomainRouteTarget.SERVER_EGRESS -> R.string.domain_sites_route_server
+            DomainRouteTarget.BLOCK -> R.string.domain_sites_route_block
+        }
+    )
+
+@Composable
+private fun ruleSourceLabel(value: com.dedtsss.catawg.core.routing.DomainRuleSource): String =
+    stringResource(
+        when (value) {
+            com.dedtsss.catawg.core.routing.DomainRuleSource.MANUAL ->
+                R.string.domain_sites_source_manual
+            com.dedtsss.catawg.core.routing.DomainRuleSource.SHARE ->
+                R.string.domain_sites_source_share
+            com.dedtsss.catawg.core.routing.DomainRuleSource.IMPORT ->
+                R.string.domain_sites_source_import
+        }
+    )
+
+@Composable
+private fun resolutionStatusLabel(value: com.dedtsss.catawg.core.routing.DomainResolutionStatus): String =
+    stringResource(
+        when (value) {
+            com.dedtsss.catawg.core.routing.DomainResolutionStatus.NEVER ->
+                R.string.domain_sites_status_never
+            com.dedtsss.catawg.core.routing.DomainResolutionStatus.SUCCESS ->
+                R.string.domain_sites_status_success
+            com.dedtsss.catawg.core.routing.DomainResolutionStatus.EMPTY ->
+                R.string.domain_sites_status_empty
+            com.dedtsss.catawg.core.routing.DomainResolutionStatus.TIMEOUT ->
+                R.string.domain_sites_status_timeout
+            com.dedtsss.catawg.core.routing.DomainResolutionStatus.FAILED ->
+                R.string.domain_sites_status_failed
+        }
+    )

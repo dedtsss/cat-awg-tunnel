@@ -5,6 +5,7 @@ import android.net.ConnectivityManager
 import com.dedtsss.catawg.core.routing.DomainResolution
 import com.dedtsss.catawg.core.routing.DomainResolutionStatus
 import com.dedtsss.catawg.core.routing.DomainResolver
+import com.zaneschepke.wireguardautotunnel.R
 import java.net.Inet4Address
 import java.net.Inet6Address
 import java.net.InetAddress
@@ -18,6 +19,7 @@ import kotlinx.coroutines.withTimeout
  * closest public-network context available to an app before a VPN interface is rebuilt.
  */
 class AndroidDomainResolver(context: Context, private val ioDispatcher: CoroutineDispatcher) : DomainResolver {
+    private val applicationContext = context.applicationContext
     private val connectivityManager =
         context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
 
@@ -35,13 +37,17 @@ class AndroidDomainResolver(context: Context, private val ioDispatcher: Coroutin
                     )
                 }
             } catch (_: kotlinx.coroutines.TimeoutCancellationException) {
-                DomainResolution(domain = domain, status = DomainResolutionStatus.TIMEOUT, message = "DNS lookup timed out")
+                DomainResolution(
+                    domain = domain,
+                    status = DomainResolutionStatus.TIMEOUT,
+                    message = applicationContext.getString(R.string.domain_sites_status_timeout),
+                )
             } catch (error: Throwable) {
                 if (error is CancellationException) throw error
                 DomainResolution(
                     domain = domain,
                     status = DomainResolutionStatus.FAILED,
-                    message = error.message?.take(200),
+                    message = applicationContext.getString(R.string.domain_sites_status_failed),
                 )
             }
         }

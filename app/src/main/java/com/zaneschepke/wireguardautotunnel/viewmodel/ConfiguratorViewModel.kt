@@ -1,5 +1,6 @@
 package com.zaneschepke.wireguardautotunnel.viewmodel
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dedtsss.catawg.core.configurator.AwgCapabilities
@@ -21,6 +22,7 @@ import com.dedtsss.catawg.core.protocol.isSecretBearingConfigKey
 import com.zaneschepke.wireguardautotunnel.cat.server.CatServerErrorMapper
 import com.zaneschepke.wireguardautotunnel.data.cat.CatConfigProfileStore
 import com.zaneschepke.wireguardautotunnel.data.cat.CatServerSettingsStore
+import com.zaneschepke.wireguardautotunnel.R
 import com.zaneschepke.wireguardautotunnel.ui.state.ConfiguratorUiState
 import java.time.Instant
 import kotlinx.coroutines.Dispatchers
@@ -37,6 +39,7 @@ class ConfiguratorViewModel(
     private val client: CatServerClient,
     private val settingsStore: CatServerSettingsStore,
     private val credentials: CatServerCredentialStore,
+    private val context: Context,
 ) : ViewModel() {
     private val parser = AwgConfigParser()
     private val validator = AwgConfigValidator(parser)
@@ -60,7 +63,7 @@ class ConfiguratorViewModel(
     fun createCandidate() = _state.update {
         it.copy(
             rawText = "[Interface]\n\n[Peer]\n",
-            profileName = "Candidate",
+            profileName = context.getString(R.string.configurator_default_candidate),
             validation = null,
             parsedProfile = null,
             serverValidation = null,
@@ -76,7 +79,9 @@ class ConfiguratorViewModel(
                     val document = parser.parse(snapshot.rawText)
                     val profile =
                         generator.candidate(
-                            snapshot.profileName.ifBlank { "Candidate" },
+                            snapshot.profileName.ifBlank {
+                                context.getString(R.string.configurator_default_candidate)
+                            },
                             snapshot.protocol,
                             document,
                             capabilities(),
@@ -88,7 +93,7 @@ class ConfiguratorViewModel(
                             listOf(
                                 ValidationIssue(
                                     "PARSE_ERROR",
-                                    error.message ?: "Could not parse profile",
+                                    context.getString(R.string.configurator_error_parse),
                                 )
                             )
                         )
@@ -116,7 +121,7 @@ class ConfiguratorViewModel(
             if (profile.parameters.keys.any(::isSecretBearingConfigKey)) {
                 _state.update {
                     it.copy(
-                        error = "Secret-bearing fields cannot be saved as public candidate profiles"
+                        error = context.getString(R.string.configurator_error_secret)
                     )
                 }
                 return@launch
@@ -126,7 +131,7 @@ class ConfiguratorViewModel(
                 profileStore.recordChange(
                     ConfigurationChange(
                         newProfileId = profile.id,
-                        reason = "candidate profile saved; no networking change was applied",
+                        reason = context.getString(R.string.configurator_change_saved),
                         recommendationSource = "user",
                     )
                 )
@@ -142,7 +147,7 @@ class ConfiguratorViewModel(
                 _state.update {
                     it.copy(
                         serverError =
-                            "Validate the profile locally before sending a public copy to Cat Server"
+                            context.getString(R.string.configurator_error_validate_first)
                     )
                 }
                 return@launch
@@ -150,7 +155,7 @@ class ConfiguratorViewModel(
             val settings = settingsStore.read()
             if (!settings.isPaired || credentials.read() == null) {
                 _state.update {
-                    it.copy(serverError = "Pair a Cat Server before remote validation")
+                    it.copy(serverError = context.getString(R.string.configurator_error_pair_first))
                 }
                 return@launch
             }
@@ -163,7 +168,7 @@ class ConfiguratorViewModel(
                     }
                     .onFailure { error ->
                         _state.update {
-                            it.copy(serverError = CatServerErrorMapper.userMessage(error))
+                            it.copy(serverError = CatServerErrorMapper.userMessage(context, error))
                         }
                     }
             }
@@ -200,7 +205,9 @@ class ConfiguratorViewModel(
                     credentials.read() == null ||
                     settings.capabilities?.features?.aiGateway != true
             ) {
-                _state.update { it.copy(error = "AI Assistant is disabled by the paired server") }
+                _state.update {
+                    it.copy(error = context.getString(R.string.configurator_error_ai_disabled))
+                }
                 return@launch
             }
             runBusy {
@@ -223,7 +230,9 @@ class ConfiguratorViewModel(
                         }
                     }
                     .onFailure { error ->
-                        _state.update { it.copy(error = CatServerErrorMapper.userMessage(error)) }
+                        _state.update {
+                            it.copy(error = CatServerErrorMapper.userMessage(context, error))
+                        }
                     }
             }
         }
@@ -241,14 +250,18 @@ class ConfiguratorViewModel(
                 suspendResult { client.metricsCompare(changeAt) }
                     .onSuccess { metrics ->
                         _state.update {
-                            it.copy(reliability = metrics, reliabilitySource = "Cat Server metrics")
+                            it.copy(
+                                reliability = metrics,
+                                reliabilitySource =
+                                    context.getString(R.string.configurator_server_metrics),
+                            )
                         }
                     }
                     .onFailure { error ->
                         _state.update {
                             it.copy(
                                 reliability = null,
-                                reliabilitySource = CatServerErrorMapper.userMessage(error),
+                                reliabilitySource = CatServerErrorMapper.userMessage(context, error),
                             )
                         }
                     }
@@ -260,15 +273,18 @@ class ConfiguratorViewModel(
                                 changeAt = changeAt,
                                 before =
                                     ReliabilityMetrics(
-                                        sampleNote = "Pair Cat Server for server metrics"
+                                        sampleNote =
+                                            context.getString(R.string.configurator_pair_for_metrics)
                                     ),
                                 after =
                                     ReliabilityMetrics(
-                                        sampleNote = "Pair Cat Server for server metrics"
+                                        sampleNote =
+                                            context.getString(R.string.configurator_pair_for_metrics)
                                     ),
                                 windowSeconds = 86_400,
                             ),
-                        reliabilitySource = "No Cat Server; local before/after data is insufficient",
+                        reliabilitySource =
+                            context.getString(R.string.configurator_local_metrics_note),
                     )
                 }
             }
@@ -304,7 +320,7 @@ class ConfiguratorViewModel(
         try {
             block()
         } catch (error: Throwable) {
-            _state.update { it.copy(error = CatServerErrorMapper.userMessage(error)) }
+            _state.update { it.copy(error = CatServerErrorMapper.userMessage(context, error)) }
         }
         _state.update { it.copy(busy = false) }
     }

@@ -40,12 +40,18 @@ data class CatBootstrapPayload(
 object CatBootstrapParser {
     private val json = Json { ignoreUnknownKeys = true }
 
+    const val PAIRING_SCHEME = "catpair"
+    const val PAIRING_VERSION = "v1"
+    private const val PAIRING_PREFIX = "$PAIRING_SCHEME:$PAIRING_VERSION"
+
     fun parse(raw: String): CatBootstrapPayload {
         val value = raw.trim()
         require(value.isNotBlank()) { "Bootstrap payload is empty" }
         val payload =
             when {
                 value.startsWith("{") -> json.decodeFromString<CatBootstrapPayload>(value)
+                isMultilinePayload(value) -> parseText(value)
+                value.startsWith("$PAIRING_SCHEME:", ignoreCase = true) -> parseDeepLink(value)
                 value.startsWith("cat://", ignoreCase = true) -> parseUri(value)
                 else -> parseText(value)
             }
@@ -55,30 +61,27 @@ object CatBootstrapParser {
         return payload.normalized()
     }
 
+    private fun isMultilinePayload(value: String): Boolean =
+        value.lineSequence().firstOrNull()?.equals(PAIRING_PREFIX, ignoreCase = true) == true &&
+            value.contains('\n')
+
     private fun parseText(value: String): CatBootstrapPayload {
         val lines = value.lineSequence().map(String::trim).filter(String::isNotBlank).toList()
         require(lines.firstOrNull()?.equals("catpair:v1", ignoreCase = true) == true) {
             "Unsupported bootstrap format; expected catpair:v1"
         }
-        val entries =
-            lines.drop(1).associate { line ->
+        val entries = buildMap {
+            lines.drop(1).forEach { line ->
                 val separator = line.indexOf('=')
                 require(separator > 0) { "Bootstrap fields must use key=value lines" }
-                line.substring(0, separator).trim().lowercase() to
-                    line.substring(separator + 1).trim()
+                val key = line.substring(0, separator).trim().lowercase()
+                require(key.isNotBlank()) { "Bootstrap payload contains an empty field name" }
+                require(put(key, line.substring(separator + 1).trim()) == null) {
+                    "Bootstrap payload contains duplicate field '$key'"
+                }
             }
-        return CatBootstrapPayload(
-            server =
-                entries["server"] ?: entries["url"] ?: error("Bootstrap payload is missing server"),
-            certificateFingerprint =
-                entries["fingerprint"]
-                    ?: entries["certificatefingerprint"]
-                    ?: error("Bootstrap payload is missing fingerprint"),
-            bootstrapToken =
-                entries["token"]
-                    ?: entries["bootstraptoken"]
-                    ?: error("Bootstrap payload is missing token"),
-        )
+        }
+        return payloadFrom(entries, "Bootstrap payload")
     }
 
     private fun parseUri(value: String): CatBootstrapPayload {
@@ -89,24 +92,67 @@ object CatBootstrapParser {
         ) {
             "Unsupported Cat bootstrap URI"
         }
-        val params =
-            uri.rawQuery.orEmpty().split('&').filter(String::isNotBlank).associate { item ->
-                val separator = item.indexOf('=')
-                require(separator > 0) { "Bootstrap URI fields must use key=value" }
-                URLDecoder.decode(item.substring(0, separator), StandardCharsets.UTF_8) to
-                    URLDecoder.decode(item.substring(separator + 1), StandardCharsets.UTF_8)
-            }
-        return CatBootstrapPayload(
-            server = params["server"] ?: params["url"] ?: error("Bootstrap URI is missing server"),
-            certificateFingerprint =
-                params["fingerprint"] ?: error("Bootstrap URI is missing fingerprint"),
-            bootstrapToken = params["token"] ?: error("Bootstrap URI is missing token"),
+        return payloadFrom(parseQuery(uri.rawQuery.orEmpty(), "Bootstrap URI"), "Bootstrap URI")
+    }
+
+    /**
+     * The product-facing payload for QR codes, Android deep links and future server-panel buttons.
+     * It remains a one-time bootstrap envelope and deliberately contains no device credential.
+     */
+    fun toDeepLink(payload: CatBootstrapPayload): String {
+        val normalized = payload.normalized()
+        fun encode(value: String) = URLEncoder.encode(value, StandardCharsets.UTF_8)
+        return "$PAIRING_PREFIX?server=${encode(normalized.server)}&fingerprint=${encode(normalized.certificateFingerprint)}&token=${encode(normalized.bootstrapToken)}"
+    }
+
+    /** Kept as a source-compatible alias; generated payloads now use the catpair:v1 scheme. */
+    fun toUri(payload: CatBootstrapPayload): String {
+        return toDeepLink(payload)
+    }
+
+    private fun parseDeepLink(value: String): CatBootstrapPayload {
+        require(value.startsWith(PAIRING_PREFIX, ignoreCase = true)) {
+            "Unsupported Cat pairing deep link"
+        }
+        val query = value.substring(PAIRING_PREFIX.length)
+        require(query.startsWith('?')) { "Cat pairing deep link is missing fields" }
+        return payloadFrom(
+            parseQuery(query.drop(1), "Cat pairing deep link"),
+            "Cat pairing deep link",
         )
     }
 
-    fun toUri(payload: CatBootstrapPayload): String {
-        val normalized = payload.normalized()
-        fun encode(value: String) = URLEncoder.encode(value, StandardCharsets.UTF_8)
-        return "cat://pair?server=${encode(normalized.server)}&fingerprint=${encode(normalized.certificateFingerprint)}&token=${encode(normalized.bootstrapToken)}"
+    private fun parseQuery(rawQuery: String, label: String): Map<String, String> {
+        require(rawQuery.isNotBlank()) { "$label is missing fields" }
+        return buildMap {
+            rawQuery.split('&').filter(String::isNotBlank).forEach { item ->
+                val separator = item.indexOf('=')
+                require(separator > 0) { "$label fields must use key=value" }
+                val key =
+                    URLDecoder.decode(item.substring(0, separator), StandardCharsets.UTF_8)
+                        .trim()
+                        .lowercase()
+                require(key.isNotBlank()) { "$label contains an empty field name" }
+                require(
+                    put(
+                        key,
+                        URLDecoder.decode(item.substring(separator + 1), StandardCharsets.UTF_8),
+                    ) == null
+                ) {
+                    "$label contains duplicate field '$key'"
+                }
+            }
+        }
     }
+
+    private fun payloadFrom(entries: Map<String, String>, label: String): CatBootstrapPayload =
+        CatBootstrapPayload(
+            server = entries["server"] ?: entries["url"] ?: error("$label is missing server"),
+            certificateFingerprint =
+                entries["fingerprint"]
+                    ?: entries["certificatefingerprint"]
+                    ?: error("$label is missing fingerprint"),
+            bootstrapToken =
+                entries["token"] ?: entries["bootstraptoken"] ?: error("$label is missing token"),
+        )
 }

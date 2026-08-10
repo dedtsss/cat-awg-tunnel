@@ -19,9 +19,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.dedtsss.catawg.core.configurator.AwgParameterMetadataCatalog
 import com.dedtsss.catawg.core.configurator.ConfigProtocol
+import com.zaneschepke.wireguardautotunnel.R
 import com.zaneschepke.wireguardautotunnel.viewmodel.ConfiguratorViewModel
 
 @Composable
@@ -32,16 +34,14 @@ fun ConfiguratorScreen(viewModel: ConfiguratorViewModel) {
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text("AWG Configurator v1", style = MaterialTheme.typography.headlineSmall)
-        Text(
-            "Import or create a candidate, validate it deterministically, and keep networking changes explicit. PrivateKey/PresharedKey never leave this screen or enter the public profile store."
-        )
+        Text(stringResource(R.string.configurator_title), style = MaterialTheme.typography.headlineSmall)
+        Text(stringResource(R.string.configurator_intro))
 
         OutlinedTextField(
             value = state.profileName,
             onValueChange = viewModel::setProfileName,
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Candidate name") },
+            label = { Text(stringResource(R.string.configurator_candidate_name)) },
             singleLine = true,
         )
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -50,30 +50,34 @@ fun ConfiguratorScreen(viewModel: ConfiguratorViewModel) {
                     onClick = { viewModel.setProtocol(protocol) },
                     enabled = protocol != ConfigProtocol.AWG3,
                 ) {
-                    Text(if (protocol == ConfigProtocol.AWG3) "AWG3 unavailable" else protocol.name)
+                    Text(
+                        if (protocol == ConfigProtocol.AWG3) {
+                            stringResource(R.string.configurator_awg3_unavailable)
+                        } else {
+                            protocol.name
+                        }
+                    )
                 }
             }
         }
-        Text(
-            "AWG3 is shown as unavailable until both the bundled client and paired server advertise real support."
-        )
+        Text(stringResource(R.string.configurator_awg3_note))
 
         OutlinedTextField(
             value = state.rawText,
             onValueChange = viewModel::setRawText,
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("WireGuard/AWG profile (paste/import)") },
+            label = { Text(stringResource(R.string.configurator_profile)) },
             supportingText = {
-                Text(
-                    "INI sections [Interface] and [Peer]. This field is parsed locally; only redacted public parameters can be sent to Cat Server."
-                )
+                Text(stringResource(R.string.configurator_profile_hint))
             },
             minLines = 12,
         )
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Button(onClick = viewModel::createCandidate) { Text("Create candidate") }
+            Button(onClick = viewModel::createCandidate) {
+                Text(stringResource(R.string.configurator_create))
+            }
             Button(onClick = viewModel::validateLocally, enabled = !state.busy) {
-                Text("Validate locally")
+                Text(stringResource(R.string.configurator_validate_local))
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -81,19 +85,19 @@ fun ConfiguratorScreen(viewModel: ConfiguratorViewModel) {
                 onClick = viewModel::saveCandidate,
                 enabled = state.parsedProfile != null && !state.busy,
             ) {
-                Text("Save candidate")
+                Text(stringResource(R.string.configurator_save))
             }
             Button(
                 onClick = viewModel::validateOnServer,
                 enabled = state.parsedProfile != null && !state.busy,
             ) {
-                Text("Validate on Cat Server")
+                Text(stringResource(R.string.configurator_validate_server))
             }
             TextButton(
                 onClick = viewModel::askAi,
                 enabled = state.parsedProfile != null && !state.busy,
             ) {
-                Text("Ask AI")
+                Text(stringResource(R.string.configurator_ask_ai))
             }
         }
 
@@ -104,12 +108,22 @@ fun ConfiguratorScreen(viewModel: ConfiguratorViewModel) {
                     verticalArrangement = Arrangement.spacedBy(5.dp),
                 ) {
                     Text(
-                        if (validation.isValid) "Local validation: valid"
-                        else "Local validation: needs changes"
+                        stringResource(
+                            if (validation.isValid) {
+                                R.string.configurator_local_valid
+                            } else {
+                                R.string.configurator_local_invalid
+                            }
+                        )
                     )
                     validation.issues.forEach { issue ->
                         Text(
-                            "${issue.level}: ${issue.field ?: "profile"} · ${issue.code} · ${issue.message}"
+                            stringResource(
+                                R.string.configurator_issue,
+                                issue.level,
+                                issue.field ?: stringResource(R.string.configurator_profile_default),
+                                issue.code,
+                            )
                         )
                     }
                 }
@@ -123,11 +137,15 @@ fun ConfiguratorScreen(viewModel: ConfiguratorViewModel) {
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     Text(
-                        "Public profile: ${profile.name}",
+                        stringResource(R.string.configurator_public_profile, profile.name),
                         style = MaterialTheme.typography.titleMedium,
                     )
                     Text(
-                        "Protocol: ${profile.protocol}; requirements: ${profile.capabilityRequirements.joinToString()}"
+                        stringResource(
+                            R.string.configurator_protocol_requirements,
+                            profile.protocol,
+                            profile.capabilityRequirements.joinToString(),
+                        )
                     )
                     profile.parameters.toSortedMap().forEach { (key, value) ->
                         Text("$key = $value")
@@ -141,10 +159,33 @@ fun ConfiguratorScreen(viewModel: ConfiguratorViewModel) {
                     modifier = Modifier.padding(12.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
-                    Text("Cat Server validation: ${if (response.valid) "valid" else "rejected"}")
-                    Text("Capability satisfied: ${response.capabilitySatisfied}")
+                    Text(
+                        stringResource(
+                            R.string.configurator_server_validation,
+                            stringResource(
+                                if (response.valid) {
+                                    R.string.configurator_valid
+                                } else {
+                                    R.string.configurator_rejected
+                                }
+                            ),
+                        )
+                    )
+                    Text(
+                        stringResource(
+                            R.string.configurator_capability,
+                            response.capabilitySatisfied,
+                        )
+                    )
                     response.issues.forEach { issue ->
-                        Text("${issue.severity}: ${issue.field ?: "profile"} · ${issue.message}")
+                        Text(
+                            stringResource(
+                                R.string.configurator_issue,
+                                issue.severity,
+                                issue.field ?: stringResource(R.string.configurator_profile_default),
+                                issue.code,
+                            )
+                        )
                     }
                 }
             }
@@ -158,16 +199,21 @@ fun ConfiguratorScreen(viewModel: ConfiguratorViewModel) {
                     modifier = Modifier.padding(12.dp),
                     verticalArrangement = Arrangement.spacedBy(5.dp),
                 ) {
-                    Text("AI candidate advice", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        stringResource(R.string.configurator_ai_advice),
+                        style = MaterialTheme.typography.titleMedium,
+                    )
                     Text(state.aiResponse.orEmpty())
-                    state.aiRecommendations.forEach { Text("Candidate: $it") }
-                    Text("AI recommendations are advice only and are never applied automatically.")
+                    state.aiRecommendations.forEach {
+                        Text(stringResource(R.string.configurator_candidate_advice, it))
+                    }
+                    Text(stringResource(R.string.configurator_ai_note))
                 }
             }
         }
 
-        Text("History", style = MaterialTheme.typography.titleMedium)
-        if (state.profiles.isEmpty()) Text("No saved public candidates yet.")
+        Text(stringResource(R.string.configurator_history), style = MaterialTheme.typography.titleMedium)
+        if (state.profiles.isEmpty()) Text(stringResource(R.string.configurator_empty_history))
         state.profiles.forEach { profile ->
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(
@@ -176,12 +222,18 @@ fun ConfiguratorScreen(viewModel: ConfiguratorViewModel) {
                 ) {
                     Text("${profile.name} · ${profile.protocol}")
                     Text(
-                        "Updated ${profile.updatedAt}; ${profile.parameters.size} public parameters"
+                        stringResource(
+                            R.string.configurator_updated,
+                            profile.updatedAt,
+                            profile.parameters.size,
+                        )
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        TextButton(onClick = { viewModel.compare(profile.id) }) { Text("Compare") }
+                        TextButton(onClick = { viewModel.compare(profile.id) }) {
+                            Text(stringResource(R.string.configurator_compare))
+                        }
                         TextButton(onClick = { viewModel.loadReliability(profile.id) }) {
-                            Text("Before/after")
+                            Text(stringResource(R.string.configurator_before_after))
                         }
                     }
                 }
@@ -193,7 +245,10 @@ fun ConfiguratorScreen(viewModel: ConfiguratorViewModel) {
                     modifier = Modifier.padding(12.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
-                    Text("Public profile comparison", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        stringResource(R.string.configurator_comparison),
+                        style = MaterialTheme.typography.titleMedium,
+                    )
                     state.comparison.forEach { (key, value) -> Text("$key: $value") }
                 }
             }
@@ -204,13 +259,24 @@ fun ConfiguratorScreen(viewModel: ConfiguratorViewModel) {
                     modifier = Modifier.padding(12.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
-                    Text("Before/after reliability", style = MaterialTheme.typography.titleMedium)
-                    Text("Change at ${metrics.changeAt}")
                     Text(
-                        "Before: ${metrics.before.incidents} incidents, ${metrics.before.reconnectEvents} reconnects"
+                        stringResource(R.string.configurator_reliability),
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    Text(stringResource(R.string.configurator_change_at, metrics.changeAt))
+                    Text(
+                        stringResource(
+                            R.string.configurator_before,
+                            metrics.before.incidents,
+                            metrics.before.reconnectEvents,
+                        )
                     )
                     Text(
-                        "After: ${metrics.after.incidents} incidents, ${metrics.after.reconnectEvents} reconnects"
+                        stringResource(
+                            R.string.configurator_after,
+                            metrics.after.incidents,
+                            metrics.after.reconnectEvents,
+                        )
                     )
                     Text(assessment(metrics.before.incidents, metrics.after.incidents))
                     state.reliabilitySource?.let { Text(it) }
@@ -220,20 +286,27 @@ fun ConfiguratorScreen(viewModel: ConfiguratorViewModel) {
         }
 
         HorizontalDivider()
-        Text("Parameter guide", style = MaterialTheme.typography.titleMedium)
+        Text(
+            stringResource(R.string.configurator_parameter_guide),
+            style = MaterialTheme.typography.titleMedium,
+        )
         AwgParameterMetadataCatalog.all.forEach { metadata ->
             Text(
-                "${metadata.key} — ${metadata.description}${metadata.validRange?.let { " Range: $it." }.orEmpty()}"
+                metadata.key +
+                    metadata.validRange
+                        ?.let { stringResource(R.string.configurator_parameter_range, it) }
+                        .orEmpty()
             )
         }
     }
 }
 
+@Composable
 private fun assessment(before: Int, after: Int): String =
     when {
         before >= 2 && after < before ->
-            "Assessment: improved descriptively; sample size does not prove causality."
+            stringResource(R.string.configurator_assessment_improved)
         after > before ->
-            "Assessment: worse descriptively; inspect diagnostics before changing settings again."
-        else -> "Assessment: insufficient data for a causal conclusion."
+            stringResource(R.string.configurator_assessment_worse)
+        else -> stringResource(R.string.configurator_assessment_insufficient)
     }

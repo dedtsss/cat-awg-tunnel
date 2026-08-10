@@ -78,6 +78,7 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
+import com.dedtsss.catawg.core.protocol.CatBootstrapParser
 import com.dedtsss.catawg.core.routing.DomainMatchMode
 import com.dedtsss.catawg.core.routing.DomainRouteTarget
 import com.dedtsss.catawg.core.routing.DomainRuleSource
@@ -89,6 +90,7 @@ import com.dokar.sonner.Toaster
 import com.dokar.sonner.rememberToasterState
 import com.zaneschepke.networkmonitor.NetworkMonitor
 import com.zaneschepke.wireguardautotunnel.cat.routing.DomainRoutingCoordinator
+import com.zaneschepke.wireguardautotunnel.cat.server.CatPairingImportStore
 import com.zaneschepke.wireguardautotunnel.data.AppDatabase
 import com.zaneschepke.wireguardautotunnel.domain.enums.TunnelMode
 import com.zaneschepke.wireguardautotunnel.domain.model.TunnelConfig
@@ -187,8 +189,10 @@ class MainActivity : AppCompatActivity() {
     private val appDatabase: AppDatabase by inject()
     private val networkMonitor: NetworkMonitor by inject()
     private val domainRoutingCoordinator: DomainRoutingCoordinator by inject()
+    private val catPairingImports: CatPairingImportStore by inject()
 
     private var pendingSharedDomain by mutableStateOf<String?>(null)
+    private var pendingCatPairingNavigation by mutableStateOf(false)
 
     val viewModel by viewModel<SharedAppViewModel>()
     private lateinit var roomBackup: RoomBackup
@@ -210,7 +214,7 @@ class MainActivity : AppCompatActivity() {
 
         handleConfigFileIntent(intent)
         handleWgDeepLinkIntent(intent)
-        handleShareDomainIntent(intent)
+        if (!handleCatPairingIntent(intent)) handleShareDomainIntent(intent)
 
         installSplashScreen().apply {
             setKeepOnScreenCondition { !viewModel.container.stateFlow.value.isAppLoaded }
@@ -245,7 +249,7 @@ class MainActivity : AppCompatActivity() {
                                     snackbarChannel.send(
                                         GlobalSideEffect.Snackbar(
                                             StringValue.DynamicString(
-                                                "Added $domain. The active tunnel was rebuilt if route changes were needed."
+                                                context.getString(R.string.shared_site_added, domain)
                                             ),
                                             ToastType.Success,
                                         )
@@ -255,7 +259,12 @@ class MainActivity : AppCompatActivity() {
                                     snackbarChannel.send(
                                         GlobalSideEffect.Snackbar(
                                             StringValue.DynamicString(
-                                                "Could not add $domain: ${error.message ?: "unknown error"}"
+                                                context.getString(
+                                                    R.string.shared_site_add_failed,
+                                                    domain,
+                                                    error.message
+                                                        ?: context.getString(R.string.unknown_error),
+                                                )
                                             ),
                                             ToastType.Error,
                                         )
@@ -337,6 +346,13 @@ class MainActivity : AppCompatActivity() {
                     onChange = { previousKey -> previousRoute = previousKey as? Route },
                     onExitApp = { finish() },
                 )
+
+            LaunchedEffect(pendingCatPairingNavigation, uiState.isAppLoaded) {
+                if (pendingCatPairingNavigation && uiState.isAppLoaded) {
+                    navController.push(Route.CatServer)
+                    pendingCatPairingNavigation = false
+                }
+            }
 
             val vpnActivity =
                 rememberLauncherForActivityResult(
@@ -890,7 +906,7 @@ class MainActivity : AppCompatActivity() {
         setIntent(intent)
         handleConfigFileIntent(intent)
         handleWgDeepLinkIntent(intent)
-        handleShareDomainIntent(intent)
+        if (!handleCatPairingIntent(intent)) handleShareDomainIntent(intent)
     }
 
     private fun handleConfigFileIntent(intent: Intent?) {
@@ -918,6 +934,23 @@ class MainActivity : AppCompatActivity() {
         val text = intent.getCharSequenceExtra(Intent.EXTRA_TEXT) ?: return
         pendingSharedDomain = ShareTargetParser.parse(text)?.domain
     }
+
+    /** Accepts only a complete Cat pairing envelope; ordinary shared links remain domain shares. */
+    private fun handleCatPairingIntent(intent: Intent?): Boolean {
+        val rawPayload =
+            when (intent?.action) {
+                Intent.ACTION_VIEW -> intent.dataString
+                Intent.ACTION_SEND -> intent.getCharSequenceExtra(Intent.EXTRA_TEXT)?.toString()
+                else -> null
+            }
+                ?.trim()
+                ?.takeIf { it.isNotEmpty() }
+                ?: return false
+        if (runCatching { CatBootstrapParser.parse(rawPayload) }.isFailure) return false
+        catPairingImports.accept(rawPayload)
+        pendingCatPairingNavigation = true
+        return true
+    }
 }
 
 @Composable
@@ -935,27 +968,29 @@ private fun ShareDomainDialog(
     var exactOnly by rememberSaveable(domain) { mutableStateOf(false) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add $domain to local-direct sites?") },
+        title = { Text(stringResource(R.string.shared_site_add_title, domain)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    "The rule resolves known A/AAAA answers and excludes those IPs from the VPN. Shared IPs can affect other sites."
-                )
+                Text(stringResource(R.string.shared_site_intro))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     androidx.compose.material3.Switch(
                         checked = exactOnly,
                         onCheckedChange = { exactOnly = it },
                     )
-                    Text(if (exactOnly) "Only this hostname" else "Domain and subdomains")
+                    Text(
+                        stringResource(
+                            if (exactOnly) R.string.shared_site_exact else R.string.shared_site_suffix
+                        )
+                    )
                 }
                 if (tunnels.isEmpty()) {
-                    Text("Create a tunnel before adding a shared site.")
+                    Text(stringResource(R.string.shared_site_no_tunnel))
                 } else {
-                    Text("Tunnel:")
+                    Text(stringResource(R.string.shared_site_tunnel))
                     tunnels.forEach { tunnel ->
                         TextButton(onClick = { selectedTunnelId = tunnel.id }) {
                             Text(
-                                "${if (selectedTunnelId == tunnel.id) "✓ " else ""}${tunnel.name}${if (tunnel.id in activeTunnelIds) " (active)" else ""}"
+                                "${if (selectedTunnelId == tunnel.id) "✓ " else ""}${tunnel.name}${if (tunnel.id in activeTunnelIds) " (${stringResource(R.string.shared_site_active)})" else ""}"
                             )
                         }
                     }
@@ -974,9 +1009,9 @@ private fun ShareDomainDialog(
                     }
                 },
             ) {
-                Text("Add")
+                Text(stringResource(R.string.add))
             }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
     )
 }

@@ -1,5 +1,7 @@
 package com.zaneschepke.wireguardautotunnel.cat.server
 
+import android.content.Context
+import androidx.annotation.StringRes
 import com.dedtsss.catawg.core.ai.AiAssistantRequest
 import com.dedtsss.catawg.core.ai.AiAssistantResponse
 import com.dedtsss.catawg.core.ai.CatAiProvider
@@ -22,6 +24,7 @@ import com.dedtsss.catawg.core.protocol.TimeRange
 import com.dedtsss.catawg.core.protocol.normalizeCertificateFingerprint
 import com.zaneschepke.wireguardautotunnel.data.cat.CatCredentialPersistenceFailure
 import com.zaneschepke.wireguardautotunnel.data.cat.CatServerSettingsStore
+import com.zaneschepke.wireguardautotunnel.R
 import io.ktor.client.plugins.ResponseException
 import java.net.ConnectException
 import java.net.UnknownHostException
@@ -186,48 +189,24 @@ object CatServerErrorMapper {
         }
     }
 
-    fun userMessage(error: Throwable): String =
+    /** Safe localized message; raw server exceptions and bootstrap values are never surfaced. */
+    fun userMessage(context: Context, error: Throwable): String =
+        context.getString(userMessageResource(error))
+
+    @StringRes
+    fun userMessageResource(error: Throwable): Int =
         when (code(error)) {
-            "HEALTH_FAILED" ->
-                "Cat Server health check failed. Re-check the HTTPS endpoint and certificate fingerprint."
-            "PAIRING_START_FAILED" ->
-                "Cat pairing could not start. Generate a fresh one-time bootstrap payload and try again."
-            "PAIRING_COMPLETE_FAILED" ->
-                "Cat pairing could not complete. Generate a fresh one-time bootstrap payload and try again."
-            "CREDENTIAL_PERSISTENCE_FAILED" ->
-                "Cat Server accepted pairing, but Android could not securely save its credential. Forget Cat Server, restart the app, then pair with a fresh payload."
-            "KEYSTORE_KEY_FAILED" ->
-                "Android Keystore could not load or create the Cat credential key. Pairing was not saved."
-            "ENCRYPT_FAILED" ->
-                "Android could not encrypt the Cat credential. Pairing was not saved."
-            "CREDENTIAL_WRITE_FAILED" ->
-                "Android could not write the encrypted Cat credential. Pairing was not saved."
-            "CREDENTIAL_READBACK_FAILED" ->
-                "Android wrote the Cat credential but its immediate verification failed. Pairing was not saved."
-            "CREDENTIAL_READ_FAILED" ->
-                "Android could not read the encrypted Cat credential. Local state was reset safely."
-            "DECRYPT_FAILED" ->
-                "Android could not decrypt the Cat credential. Local state was reset safely."
-            "PAIRING_SETTINGS_FAILED" ->
-                "Cat Server credential was saved, but Android could not record the paired-device settings. Restart the app and check Cat Server status."
-            "CAPABILITIES_FAILED" ->
-                "Cat Server pairing succeeded, but its capabilities could not be read. The paired device is retained; retry the health check."
-            "NOT_CONFIGURED" ->
-                "Cat Server is not configured. Enter an HTTPS server and verified certificate fingerprint."
-            "TLS_FINGERPRINT_REQUIRED" ->
-                "A SHA-256 certificate fingerprint is required before connecting."
-            "TLS_FINGERPRINT_MISMATCH" ->
-                "TLS certificate fingerprint mismatch. Re-check the fingerprint out of band."
-            "HOSTNAME_MISMATCH" ->
-                "TLS hostname verification failed. Use the hostname present in the server certificate."
-            "PAIRING_EXPIRED_OR_REVOKED" ->
-                "The pairing code or device token expired/revoked. Forget and pair again."
-            "INCOMPATIBLE_PROTOCOL" ->
-                "The server does not expose compatible Cat Protocol v1 endpoints."
-            "SERVER_UNREACHABLE" ->
-                "Cat Server is unreachable. Check the host, port, firewall and network."
-            else -> "Cat Server request failed. Check the server status and try again."
+            "TLS_FINGERPRINT_REQUIRED", "TLS_FINGERPRINT_MISMATCH", "HOSTNAME_MISMATCH" ->
+                R.string.cat_error_tls
+            "PAIRING_EXPIRED_OR_REVOKED", "PAIRING_START_FAILED", "PAIRING_COMPLETE_FAILED" ->
+                R.string.cat_error_pairing_expired
+            "SERVER_UNREACHABLE" -> R.string.cat_error_unreachable
+            "NOT_CONFIGURED" -> R.string.cat_error_not_configured
+            else -> R.string.cat_error_generic
         }
+
+    /** Kept for non-Android callers/tests; UI callers must use the localized overload. */
+    fun userMessage(error: Throwable): String = code(error)
 
     private fun errorChain(error: Throwable): List<Throwable> = buildList {
         var current: Throwable? = error

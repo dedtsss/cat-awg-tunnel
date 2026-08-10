@@ -93,7 +93,13 @@ class AndroidApplicationProvider(
                     return@mapNotNull null
                 val tunnel = allTunnels.find { it.id == id } ?: return@mapNotNull null
                 val displayState = DisplayTunnelState.from(activeTunnel)
-                TunnelNotificationLine(id, tunnel.name, displayState)
+                TunnelNotificationLine(
+                    id = id,
+                    name = tunnel.name,
+                    displayState = displayState,
+                    connectionQuality = activeTunnel.connectionQuality,
+                    trafficRate = activeTunnel.trafficRate,
+                )
             }
             .associateBy { it.id }
     }
@@ -109,7 +115,13 @@ class AndroidApplicationProvider(
                 if (mode !is BackendMode.Proxy.Standard) return@mapNotNull null
                 val tunnel = allTunnels.find { it.id == id } ?: return@mapNotNull null
                 val displayState = DisplayTunnelState.from(activeTunnel)
-                TunnelNotificationLine(id, tunnel.name, displayState)
+                TunnelNotificationLine(
+                    id = id,
+                    name = tunnel.name,
+                    displayState = displayState,
+                    connectionQuality = activeTunnel.connectionQuality,
+                    trafficRate = activeTunnel.trafficRate,
+                )
             }
             .associateBy { it.id }
     }

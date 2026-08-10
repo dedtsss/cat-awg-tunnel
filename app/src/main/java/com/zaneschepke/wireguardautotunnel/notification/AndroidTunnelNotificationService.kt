@@ -10,6 +10,7 @@ import com.zaneschepke.wireguardautotunnel.notification.NotificationService.Comp
 import com.zaneschepke.wireguardautotunnel.notification.NotificationService.Companion.TUNNEL_MESSAGES_NOTIFICATION_ID
 import com.zaneschepke.wireguardautotunnel.notification.NotificationService.Companion.VPN_GROUP_KEY
 import com.zaneschepke.wireguardautotunnel.notification.NotificationService.Companion.VPN_NOTIFICATION_ID
+import com.zaneschepke.wireguardautotunnel.util.extensions.asLocalizedString
 
 class AndroidTunnelNotificationService(private val notificationService: NotificationService) :
     TunnelNotificationService {
@@ -40,11 +41,20 @@ class AndroidTunnelNotificationService(private val notificationService: Notifica
         val formattedLines =
             tunnelNotificationLines.values.map { line ->
                 val status = line.displayState.asLocalizedString(context)
+                val quality = line.connectionQuality.asLocalizedString(context)
+                val telemetry = line.trafficRate.asLocalizedString(context)
+                val summary =
+                    context.getString(
+                        R.string.notification_tunnel_telemetry_format,
+                        status,
+                        quality,
+                        telemetry,
+                    )
 
                 if (tunnelNotificationLines.size == 1) {
-                    status
+                    summary
                 } else {
-                    context.getString(R.string.notification_tunnel_status_format, line.name, status)
+                    context.getString(R.string.notification_tunnel_status_format, line.name, summary)
                 }
             }
         val description = formattedLines.joinToString("\n")

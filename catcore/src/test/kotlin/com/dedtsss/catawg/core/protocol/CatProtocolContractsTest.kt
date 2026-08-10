@@ -151,9 +151,28 @@ class CatProtocolContractsTest {
                 bootstrapToken = "one-time+secret&value",
             )
 
-        val restored = CatBootstrapParser.parse(CatBootstrapParser.toUri(payload))
+        val deepLink = CatBootstrapParser.toDeepLink(payload)
+        val restored = CatBootstrapParser.parse(deepLink)
 
         assertEquals(payload, restored)
+        assertTrue(deepLink.startsWith("catpair:v1?"))
         assertFalse(restored.toString().contains(payload.bootstrapToken))
+    }
+
+    @Test
+    fun `bootstrap parser accepts legacy QR URI but rejects ambiguous deep link fields`() {
+        val fingerprint = "sha256:${"b".repeat(64)}"
+        val legacy =
+            "cat://pair?server=https%3A%2F%2Fcat.example&fingerprint=$fingerprint&token=one-time"
+
+        assertEquals("https://cat.example", CatBootstrapParser.parse(legacy).server)
+        assertTrue(
+            runCatching {
+                    CatBootstrapParser.parse(
+                        "catpair:v1?server=https%3A%2F%2Fcat.example&server=https%3A%2F%2Fother.example&fingerprint=$fingerprint&token=one-time"
+                    )
+                }
+                .isFailure
+        )
     }
 }

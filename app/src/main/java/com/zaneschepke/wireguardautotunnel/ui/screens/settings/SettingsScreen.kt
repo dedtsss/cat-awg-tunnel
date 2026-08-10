@@ -307,9 +307,9 @@ fun SettingsScreen(
             )
             SurfaceRow(
                 leading = { Icon(Icons.Outlined.MonitorHeart, contentDescription = null) },
-                title = "Client diagnostics",
+                title = stringResource(R.string.client_diagnostics),
                 description = {
-                    DescriptionText("Local incidents and sanitized diagnostic export")
+                    DescriptionText(stringResource(R.string.client_diagnostics_desc))
                 },
                 onClick = { navController.push(Route.ClientDiagnostics) },
             )

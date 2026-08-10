@@ -87,7 +87,7 @@ class TunnelControlTile : TileService() {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                         subtitle = state
                     }
-                    contentDescription = "$fullName • $state}"
+                    contentDescription = "$fullName • $state"
                 }
 
                 else -> {

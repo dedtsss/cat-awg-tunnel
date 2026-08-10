@@ -1,5 +1,6 @@
 package com.zaneschepke.wireguardautotunnel.viewmodel
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dedtsss.catawg.core.routing.DomainDiagnostics
@@ -13,6 +14,7 @@ import com.dedtsss.catawg.core.routing.DomainResolver
 import com.dedtsss.catawg.core.routing.DomainRuleCodec
 import com.dedtsss.catawg.core.routing.DomainResolutionStatus
 import com.zaneschepke.wireguardautotunnel.cat.routing.DomainRoutingCoordinator
+import com.zaneschepke.wireguardautotunnel.R
 import com.zaneschepke.wireguardautotunnel.ui.state.DomainSitesUiState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -25,6 +27,7 @@ class DomainSitesViewModel(
     private val repository: DomainRuleRepository,
     private val coordinator: DomainRoutingCoordinator,
     private val resolver: DomainResolver,
+    private val context: Context,
     val tunnelId: Int,
 ) : ViewModel() {
     private val _state = MutableStateFlow(DomainSitesUiState())
@@ -78,7 +81,9 @@ class DomainSitesViewModel(
         val imported =
             runCatching { DomainRuleCodec.fromJson(serialized) }
                 .getOrElse { DomainRuleCodec.fromTxt(serialized, tunnelId) }
-        if (imported.isEmpty()) throw IllegalArgumentException("No valid domain rules were found")
+        if (imported.isEmpty()) {
+            throw IllegalArgumentException(context.getString(R.string.domain_sites_invalid_rules))
+        }
         imported.forEach { rule ->
             repository.upsert(
                 rule.copy(
@@ -107,7 +112,14 @@ class DomainSitesViewModel(
             _state.update { it.copy(isWorking = true, error = null) }
             runCatching { action() }
                 .onSuccess { _state.update { it.copy(isWorking = false) } }
-                .onFailure { error -> _state.update { it.copy(isWorking = false, error = error.message ?: "Operation failed") } }
+                .onFailure {
+                    _state.update {
+                        it.copy(
+                            isWorking = false,
+                            error = context.getString(R.string.domain_sites_action_error),
+                        )
+                    }
+                }
         }
     }
 }

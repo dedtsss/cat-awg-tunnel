@@ -17,6 +17,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.vectorResource
 import com.zaneschepke.networkmonitor.AndroidNetworkMonitor
 import com.zaneschepke.tunnel.state.ActiveTunnel
+import com.zaneschepke.tunnel.state.TunnelConnectionQuality
+import com.zaneschepke.tunnel.state.TunnelTrafficRate
 import com.zaneschepke.wireguardautotunnel.R
 import com.zaneschepke.wireguardautotunnel.domain.enums.TunnelDnsMode
 import com.zaneschepke.wireguardautotunnel.domain.enums.TunnelMode
@@ -141,6 +143,30 @@ fun ActiveTunnel.statusText(context: Context): String {
         R.string.status_template,
         DisplayTunnelState.from(this).asLocalizedString(context),
     )
+}
+
+fun TunnelConnectionQuality.asLocalizedString(context: Context): String {
+    val label =
+        when (this) {
+            TunnelConnectionQuality.CONNECTING -> R.string.connection_quality_connecting
+            TunnelConnectionQuality.STABLE -> R.string.connection_quality_stable
+            TunnelConnectionQuality.UNSTABLE -> R.string.connection_quality_unstable
+            TunnelConnectionQuality.NO_CONNECTION -> R.string.connection_quality_no_connection
+        }
+    return context.getString(label)
+}
+
+/** The counter source stays platform-neutral; units and decimal punctuation follow app locale. */
+fun TunnelTrafficRate.asLocalizedString(context: Context): String =
+    "↓ ${context.formatTrafficRate(downloadBytesPerSecond)} · ↑ ${context.formatTrafficRate(uploadBytesPerSecond)}"
+
+private fun Context.formatTrafficRate(bytesPerSecond: Long): String {
+    val bits = bytesPerSecond.coerceAtLeast(0L).toDouble() * 8.0
+    return when {
+        bits < 1_000.0 -> getString(R.string.traffic_rate_bits, bits.toLong())
+        bits < 1_000_000.0 -> getString(R.string.traffic_rate_kbits, bits / 1_000.0)
+        else -> getString(R.string.traffic_rate_mbits, bits / 1_000_000.0)
+    }
 }
 
 fun ActiveTunnel.uptimeText(context: Context, now: Long): String? {

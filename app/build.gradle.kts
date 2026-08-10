@@ -11,9 +11,7 @@ plugins {
     alias(libs.plugins.aboutlibraries)
 }
 
-ksp {
-    arg("room.schemaLocation", "$projectDir/schemas")
-}
+ksp { arg("room.schemaLocation", "$projectDir/schemas") }
 
 licensee {
     allowedLicenses().forEach { allow(it) }
@@ -68,9 +66,7 @@ configure<ApplicationExtension> {
 
         experimentalProperties["android.experimental.disableGitVersion"] = true
 
-        sourceSets {
-            getByName("debug").assets.directories += "$projectDir/schemas"
-        }
+        sourceSets { getByName("debug").assets.directories += "$projectDir/schemas" }
 
         val languagesProvider = project.languageListProvider()
         val languagesArray = buildLanguagesArray(languagesProvider.get())
@@ -117,7 +113,11 @@ configure<ApplicationExtension> {
             )
             signingConfig = signingConfigs.getByName(Constants.RELEASE)
             manifestPlaceholders["providerAuthority"] = "${Constants.APPLICATION_ID}.provider"
-            buildConfigField("String", "FILE_PROVIDER_AUTHORITY", "\"${Constants.APPLICATION_ID}.provider\"")
+            buildConfigField(
+                "String",
+                "FILE_PROVIDER_AUTHORITY",
+                "\"${Constants.APPLICATION_ID}.provider\"",
+            )
         }
 
         debug {
@@ -128,15 +128,46 @@ configure<ApplicationExtension> {
                 signingConfig = signingConfigs.getByName(Constants.CAT_TEST)
             }
             manifestPlaceholders["providerAuthority"] = "${Constants.APPLICATION_ID}.provider.debug"
-            buildConfigField("String", "FILE_PROVIDER_AUTHORITY", "\"${Constants.APPLICATION_ID}.provider.debug\"")
+            buildConfigField(
+                "String",
+                "FILE_PROVIDER_AUTHORITY",
+                "\"${Constants.APPLICATION_ID}.provider.debug\"",
+            )
+        }
+
+        // LeakCanary is useful for an explicit developer diagnostic build, but it must not add
+        // end-user notifications to the normal, permanently signed Cat test channel.
+        create("diagnostic") {
+            applicationIdSuffix = ".diagnostic"
+            resValue("string", "app_name", "Cat AWG Tunnel Diagnostic")
+            isDebuggable = true
+            signingConfig =
+                if (!System.getenv("CAT_TEST_KEYSTORE_PATH").isNullOrBlank()) {
+                    signingConfigs.getByName(Constants.CAT_TEST)
+                } else {
+                    signingConfigs.getByName("debug")
+                }
+            manifestPlaceholders["providerAuthority"] =
+                "${Constants.APPLICATION_ID}.provider.diagnostic"
+            buildConfigField(
+                "String",
+                "FILE_PROVIDER_AUTHORITY",
+                "\"${Constants.APPLICATION_ID}.provider.diagnostic\"",
+            )
+            matchingFallbacks += listOf("debug")
         }
 
         create(Constants.NIGHTLY) {
             initWith(buildTypes.getByName(Constants.RELEASE))
             applicationIdSuffix = ".nightly"
             resValue("string", "app_name", "Cat AWG Tunnel Nightly")
-            manifestPlaceholders["providerAuthority"] = "${Constants.APPLICATION_ID}.provider.nightly"
-            buildConfigField("String", "FILE_PROVIDER_AUTHORITY", "\"${Constants.APPLICATION_ID}.provider.nightly\"")
+            manifestPlaceholders["providerAuthority"] =
+                "${Constants.APPLICATION_ID}.provider.nightly"
+            buildConfigField(
+                "String",
+                "FILE_PROVIDER_AUTHORITY",
+                "\"${Constants.APPLICATION_ID}.provider.nightly\"",
+            )
         }
     }
 
@@ -156,9 +187,7 @@ configure<ApplicationExtension> {
         }
     }
 
-    compileOptions {
-        isCoreLibraryDesugaringEnabled = true
-    }
+    compileOptions { isCoreLibraryDesugaringEnabled = true }
 
     buildFeatures {
         compose = true
@@ -174,10 +203,7 @@ androidComponents {
 
         if (isNightly) {
             variant.outputs.forEach { output ->
-
-                output.versionCode.set(
-                    output.versionCode.get() + project.getVersionCodeIncrement()
-                )
+                output.versionCode.set(output.versionCode.get() + project.getVersionCodeIncrement())
 
                 val currentVersion = output.versionName.get()
                 val nextVersion = bumpToNextPatchVersion(currentVersion)
@@ -187,25 +213,30 @@ androidComponents {
             }
         }
 
-        val abiNameMap = mapOf(
-            "armeabi-v7a" to "armv7",
-            "arm64-v8a" to "arm64",
-            "x86" to "x86",
-            "x86_64" to "x64",
-        )
+        val abiNameMap =
+            mapOf(
+                "armeabi-v7a" to "armv7",
+                "arm64-v8a" to "arm64",
+                "x86" to "x86",
+                "x86_64" to "x64",
+            )
 
         variant.outputs.forEach { output ->
-            val abi = output.filters.find { it.filterType == FilterConfiguration.FilterType.ABI }?.identifier
+            val abi =
+                output.filters
+                    .find { it.filterType == FilterConfiguration.FilterType.ABI }
+                    ?.identifier
             val flavorName = variant.productFlavors.joinToString("-") { it.second }
             val versionName = output.versionName.get()
             val baseFileName = "${Constants.APP_NAME}-${flavorName}-v${versionName}"
 
-            val outputFileName = if (!abi.isNullOrEmpty()) {
-                val shortAbiName = abiNameMap.getOrDefault(abi, abi)
-                "${baseFileName}-${shortAbiName}.apk"
-            } else {
-                "${baseFileName}.apk"
-            }
+            val outputFileName =
+                if (!abi.isNullOrEmpty()) {
+                    val shortAbiName = abiNameMap.getOrDefault(abi, abi)
+                    "${baseFileName}-${shortAbiName}.apk"
+                } else {
+                    "${baseFileName}.apk"
+                }
 
             output.outputFileName.set(outputFileName)
         }
@@ -283,7 +314,7 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.manifest)
 
-    debugImplementation(libs.leakcanary.android)
+    add("diagnosticImplementation", libs.leakcanary.android)
 
     // Room database backup
     implementation(libs.roomdatabasebackup) {

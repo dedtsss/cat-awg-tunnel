@@ -22,6 +22,8 @@ import com.zaneschepke.wireguardautotunnel.domain.state.AutoTunnelState
 import com.zaneschepke.wireguardautotunnel.domain.state.toDomain
 import com.zaneschepke.wireguardautotunnel.notification.AndroidNotificationService
 import com.zaneschepke.wireguardautotunnel.notification.NotificationService
+import com.zaneschepke.tunnel.ApplicationProvider
+import com.zaneschepke.tunnel.model.BackendMode
 import com.zaneschepke.wireguardautotunnel.service.tile.AutoTunnelTileRefresher
 import com.zaneschepke.wireguardautotunnel.util.Constants
 import com.zaneschepke.wireguardautotunnel.util.extensions.to
@@ -63,10 +65,13 @@ class AutoTunnelService : LifecycleService() {
     private val settingsRepository: GeneralSettingRepository by inject()
     private val tunnelsRepository: TunnelRepository by inject()
     private val tunnelCoordinator: TunnelCoordinator by inject()
+    private val applicationProvider: ApplicationProvider by inject()
     private var autoTunnelJob: Job? = null
     private var permissionsJob: Job? = null
     private var overridesJob: Job? = null
     private var noInternetStopJob: Job? = null
+    private var foregroundNotificationJob: Job? = null
+    private var foregroundNotificationId = NotificationService.AUTO_TUNNEL_NOTIFICATION_ID
 
     private data class PermissionWarningState(
         val detectionMethod: AndroidNetworkMonitor.WifiDetectionMethod,
@@ -105,6 +110,7 @@ class AutoTunnelService : LifecycleService() {
         super.onCreate()
         stateHolder.setActive(true)
         launchWatcherNotification()
+        observeForegroundNotification()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -133,7 +139,14 @@ class AutoTunnelService : LifecycleService() {
 
     override fun onDestroy() {
         cancelNoInternetStopJob()
-        ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
+        foregroundNotificationJob?.cancel()
+        // If Auto Tunnel was sharing the primary VPN notification, removing it here would also
+        // hide the still-running VPN foreground service. Detach it instead; only the standalone
+        // watcher notification belongs exclusively to this service.
+        ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_DETACH)
+        if (foregroundNotificationId == NotificationService.AUTO_TUNNEL_NOTIFICATION_ID) {
+            notificationService.remove(NotificationService.AUTO_TUNNEL_NOTIFICATION_ID)
+        }
         stateHolder.setActive(false)
         AutoTunnelTileRefresher.refresh(this)
         super.onDestroy()
@@ -156,9 +169,38 @@ class AutoTunnelService : LifecycleService() {
     private fun launchWatcherNotification(
         description: String = getString(R.string.monitoring_state_changes)
     ) {
+        val hasPrimaryTunnel =
+            tunnelCoordinator.backendStatus.value.activeTunnels.values.any { active ->
+                active.mode is BackendMode.Vpn || active.mode is BackendMode.Proxy.KillSwitchPrimary
+            }
+        val notificationId =
+            if (hasPrimaryTunnel) {
+                NotificationService.VPN_NOTIFICATION_ID
+            } else {
+                NotificationService.AUTO_TUNNEL_NOTIFICATION_ID
+            }
+        if (hasPrimaryTunnel) {
+            // Reuse the fully rendered VPN foreground notification rather than replacing it with
+            // an Auto Tunnel placeholder. This keeps one normal notification and preserves the
+            // live quality/traffic line owned by VpnCompanionService.
+            lifecycleScope.launch {
+                val notification =
+                    applicationProvider.buildVpnPersistentNotification(tunnelCoordinator.backendStatus.value)
+                ServiceCompat.startForeground(
+                    this@AutoTunnelService,
+                    notificationId,
+                    notification,
+                    Constants.SPECIAL_USE_SERVICE_TYPE_ID,
+                )
+                foregroundNotificationId = notificationId
+                notificationService.remove(NotificationService.AUTO_TUNNEL_NOTIFICATION_ID)
+            }
+            return
+        }
         val notification =
             notificationService.createNotification(
-                AndroidNotificationService.NotificationChannels.AutoTunnel,
+                channel =
+                    AndroidNotificationService.NotificationChannels.AutoTunnel,
                 title = getString(R.string.auto_tunnel_title),
                 description = description,
                 actions =
@@ -166,17 +208,35 @@ class AutoTunnelService : LifecycleService() {
                         notificationService.createNotificationAction(
                             NotificationAction.AUTO_TUNNEL_OFF
                         )
-                    ),
+                ),
                 onGoing = true,
-                groupKey = NotificationService.AUTO_TUNNEL_GROUP_KEY,
+                groupKey =
+                    NotificationService.AUTO_TUNNEL_GROUP_KEY,
                 isGroupSummary = true,
             )
         ServiceCompat.startForeground(
             this,
-            NotificationService.AUTO_TUNNEL_NOTIFICATION_ID,
+            notificationId,
             notification,
             Constants.SPECIAL_USE_SERVICE_TYPE_ID,
         )
+        foregroundNotificationId = notificationId
+    }
+
+    private fun observeForegroundNotification() {
+        foregroundNotificationJob?.cancel()
+        foregroundNotificationJob =
+            lifecycleScope.launch {
+                tunnelCoordinator.backendStatus
+                    .map { status ->
+                        status.activeTunnels.values.any { active ->
+                            active.mode is BackendMode.Vpn ||
+                                active.mode is BackendMode.Proxy.KillSwitchPrimary
+                        }
+                    }
+                    .distinctUntilChanged()
+                    .collect { launchWatcherNotification() }
+            }
     }
 
     // Instead of stopping tunnel right away on no internet, we kick off this job to add short delay

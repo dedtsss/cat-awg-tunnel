@@ -85,10 +85,21 @@ fun SupportScreen(viewModel: SupportViewModel = koinViewModel()) {
     val playReviewsUrl =
         "https://play.google.com/store/apps/details?id=${context.packageName}&showAllReviews=true"
 
-    val version = remember {
-        "v${BuildConfig.VERSION_NAME +
-                if(BuildConfig.DEBUG) "-debug" else "" }+git.${BuildConfig.GIT_SHA}"
-    }
+    val buildIdentity =
+        remember {
+            listOf(
+                    context.getString(R.string.product_identity_title),
+                    context.getString(R.string.build_version_name, BuildConfig.VERSION_NAME),
+                    context.getString(R.string.build_version_code, BuildConfig.VERSION_CODE),
+                    context.getString(R.string.build_git_sha, BuildConfig.GIT_SHA),
+                    context.getString(
+                        R.string.build_channel,
+                        BuildConfig.FLAVOR,
+                        BuildConfig.BUILD_TYPE,
+                    ),
+                )
+                .joinToString("\n")
+        }
 
     val focusRequester = remember { FocusRequester() }
 
@@ -250,16 +261,26 @@ fun SupportScreen(viewModel: SupportViewModel = koinViewModel()) {
             )
             SurfaceRow(
                 leading = { Icon(Icons.Outlined.Memory, contentDescription = null) },
-                title = stringResource(R.string.about),
+                title = stringResource(R.string.product_identity_title),
                 description = {
                     Column {
-                        DescriptionText(stringResource(R.string.version_template, version))
                         DescriptionText(
-                            stringResource(R.string.flavor_template, BuildConfig.FLAVOR)
+                            stringResource(R.string.build_version_name, BuildConfig.VERSION_NAME)
+                        )
+                        DescriptionText(
+                            stringResource(R.string.build_version_code, BuildConfig.VERSION_CODE)
+                        )
+                        DescriptionText(stringResource(R.string.build_git_sha, BuildConfig.GIT_SHA))
+                        DescriptionText(
+                            stringResource(
+                                R.string.build_channel,
+                                BuildConfig.FLAVOR,
+                                BuildConfig.BUILD_TYPE,
+                            )
                         )
                     }
                 },
-                onClick = { clipboardManager.copy(version) },
+                onClick = { clipboardManager.copy(buildIdentity) },
             )
             SurfaceRow(
                 leading = { Icon(Icons.Outlined.InstallMobile, contentDescription = null) },

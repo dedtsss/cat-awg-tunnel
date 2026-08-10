@@ -13,7 +13,6 @@ import com.dedtsss.catawg.core.routing.DomainRouteProvider
 import com.zaneschepke.tunnel.Tunnel
 import com.zaneschepke.tunnel.backend.Backend
 import com.zaneschepke.tunnel.backend.KillSwitch
-import com.zaneschepke.tunnel.backend.ProxyBackend
 import com.zaneschepke.tunnel.backend.SocketProtector
 import com.zaneschepke.tunnel.backend.dns.TunnelDnsConfig
 import com.zaneschepke.tunnel.model.KillSwitchConfig
@@ -61,8 +60,7 @@ class VpnService : android.net.VpnService(), KillSwitch, SocketProtector {
     override fun onDestroy() {
         Timber.d("VpnService destroyed")
         try {
-            ProxyBackend.setSocketProtector(null)
-            serviceManager.clearVpnService()
+            serviceManager.clearVpnService(this)
             closeVpnTunnelFd()
             disableKillSwitch()
             hevBridgeJob?.cancel()
@@ -75,7 +73,7 @@ class VpnService : android.net.VpnService(), KillSwitch, SocketProtector {
 
     override fun onRevoke() {
         Timber.w("VPN revoked by user via system settings")
-        ProxyBackend.setSocketProtector(null)
+        serviceManager.clearVpnService(this)
         disableKillSwitch()
         stopHevSocks5Bridge()
         shutdownScope.launch { backend.stopAllActiveTunnels() }

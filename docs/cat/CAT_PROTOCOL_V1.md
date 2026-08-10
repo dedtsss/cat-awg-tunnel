@@ -16,8 +16,8 @@ The protocol uses `/api/v1`, camelCase JSON, opaque string IDs, `schemaVersion: 
 | Reliability | `metricsCompare()` reads descriptive before/after metrics from `/metrics/compare` |
 | AI | optional `CatAiChatRequest/Response`; response is candidate-only and `applied=false` |
 
-`CatBootstrapPayload`/`CatBootstrapParser` provide text, JSON and `cat://pair` copy/paste/QR
-material. `AndroidCatServerClient` is the production adapter and
+`CatBootstrapPayload`/`CatBootstrapParser` provide the canonical `catpair:v1` deep-link/QR
+envelope plus multiline, JSON and legacy `cat://pair` migration input. `AndroidCatServerClient` is the production adapter and
 `AndroidKeystoreCatServerCredentialStore` stores only the encrypted bearer credential. Initial
 bootstrap accepts only out-of-band verified certificate fingerprint material; hostname checking
 stays enabled and there is no trust-all path.

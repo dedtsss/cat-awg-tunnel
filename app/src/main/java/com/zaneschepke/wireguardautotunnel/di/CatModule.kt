@@ -12,6 +12,7 @@ import com.zaneschepke.wireguardautotunnel.cat.routing.AndroidDomainRouteProvide
 import com.zaneschepke.wireguardautotunnel.cat.routing.DomainRoutingCoordinator
 import com.zaneschepke.wireguardautotunnel.cat.server.AndroidCatServerClient
 import com.zaneschepke.wireguardautotunnel.cat.server.CatServerAiProvider
+import com.zaneschepke.wireguardautotunnel.cat.server.CatPairingImportStore
 import com.zaneschepke.wireguardautotunnel.data.cat.AndroidKeystoreCatServerCredentialStore
 import com.zaneschepke.wireguardautotunnel.data.cat.CatConfigProfileStore
 import com.zaneschepke.wireguardautotunnel.data.cat.CatServerSettingsStore
@@ -28,6 +29,7 @@ val catModule = module {
     // their own module instead of allowing a mock to ship in the APK.
     single<CatServerCredentialStore> { AndroidKeystoreCatServerCredentialStore(androidContext()) }
     singleOf(::CatServerSettingsStore)
+    singleOf(::CatPairingImportStore)
     single<CatServerClient> {
         AndroidCatServerClient(
             settingsStore = get(),

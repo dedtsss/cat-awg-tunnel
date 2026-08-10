@@ -53,25 +53,10 @@ jobs:
           echo "CAT_TEST_KEY_ALIAS=$CAT_AWG_TEST_KEY_ALIAS" >> "$GITHUB_ENV"
           echo "CAT_TEST_KEY_PASSWORD=$CAT_AWG_TEST_KEY_PASSWORD" >> "$GITHUB_ENV"
 
-      - name: Run Cat core tests
-        run: ./gradlew :catcore:test --no-daemon --no-parallel --max-workers=1
-
-      - name: Run Android unit tests
-        run: ./gradlew :app:testStandaloneDebugUnitTest --no-daemon --no-parallel --max-workers=1
-
-      - name: Run Cat credential Android runtime test
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 35
-          target: aosp_atd
-          arch: x86_64
-          profile: pixel_2
-          emulator-options: -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect -no-snapshot -no-snapshot-save
-          disable-animations: true
-          script: >-
-            ./gradlew :app:connectedStandaloneDebugAndroidTest
-            -Pandroid.testInstrumentationRunnerArguments.class=com.zaneschepke.wireguardautotunnel.data.cat.AndroidKeystoreCatServerCredentialStoreInstrumentedTest
-            --no-daemon --no-parallel --max-workers=1
+      - name: Run focused Cat, telemetry and Android JVM tests
+        run: >-
+          ./gradlew :catcore:test :tunnel:testDebugUnitTest :app:testStandaloneDebugUnitTest
+          --no-daemon --no-parallel --max-workers=1
 
       - name: Assemble one signed installable APK
         env:
@@ -80,12 +65,14 @@ jobs:
         run: |
           set -euo pipefail
           version_code=$((CAT_TEST_VERSION_BASE + GITHUB_RUN_NUMBER * 2))
-          test "$version_code" -ge 50236
+          # Artifact #24 was physically published with versionCode 50250.
+          test "$version_code" -gt 50250
           echo "CAT_TEST_VERSION_CODE=$version_code" >> "$GITHUB_ENV"
           ./gradlew :app:assembleStandaloneDebug --no-daemon --no-parallel --max-workers=1 \
             -PnoSplits=true -PcatTestVersionCode="$version_code"
-          source_apk="$(find app/build/outputs/apk/standalone/debug -type f -name '*.apk' | head -1)"
-          test -n "$source_apk"
+          mapfile -t apk_paths < <(find app/build/outputs/apk/standalone/debug -type f -name '*.apk')
+          test "${#apk_paths[@]}" -eq 1
+          source_apk="${apk_paths[0]}"
           cp "$source_apk" "$RUNNER_TEMP/cat-awg-test.apk"
 
       - name: Verify signer, version and APK digest

@@ -1,5 +1,6 @@
 package com.zaneschepke.wireguardautotunnel.viewmodel
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dedtsss.catawg.core.diagnostics.DiagnosticExportBuilder
@@ -14,6 +15,7 @@ import com.dedtsss.catawg.core.protocol.TimeRange
 import com.zaneschepke.wireguardautotunnel.cat.diagnostics.CatDiagnosticsSyncCoordinator
 import com.zaneschepke.wireguardautotunnel.cat.server.CatServerErrorMapper
 import com.zaneschepke.wireguardautotunnel.data.cat.CatServerSettingsStore
+import com.zaneschepke.wireguardautotunnel.R
 import com.zaneschepke.wireguardautotunnel.ui.state.ClientDiagnosticsUiState
 import java.time.Instant
 import java.time.temporal.ChronoUnit
@@ -32,6 +34,7 @@ class ClientDiagnosticsViewModel(
     private val settingsStore: CatServerSettingsStore,
     private val credentials: CatServerCredentialStore,
     private val syncCoordinator: CatDiagnosticsSyncCoordinator,
+    private val context: Context,
 ) : ViewModel() {
     private val _state = MutableStateFlow(ClientDiagnosticsUiState())
     val state = _state.asStateFlow()
@@ -76,7 +79,7 @@ class ClientDiagnosticsViewModel(
                     _state.update {
                         it.copy(
                             isLoading = false,
-                            error = error.message ?: "Could not load diagnostics",
+                            error = context.getString(R.string.diagnostics_load_error),
                         )
                     }
                 }
@@ -89,7 +92,9 @@ class ClientDiagnosticsViewModel(
             _state.update { it.copy(syncBusy = true, serverError = null) }
             runCatching { syncCoordinator.sync() }
                 .onFailure { error ->
-                    _state.update { it.copy(serverError = CatServerErrorMapper.userMessage(error)) }
+                    _state.update {
+                        it.copy(serverError = CatServerErrorMapper.userMessage(context, error))
+                    }
                 }
                 .onSuccess { _state.update { it.copy(serverError = null) } }
             _state.update { it.copy(syncBusy = false) }
@@ -123,7 +128,9 @@ class ClientDiagnosticsViewModel(
                     }
                 }
                 .onFailure { error ->
-                    _state.update { it.copy(error = CatServerErrorMapper.userMessage(error)) }
+                    _state.update {
+                        it.copy(error = CatServerErrorMapper.userMessage(context, error))
+                    }
                 }
             _state.update { it.copy(aiBusy = false) }
         }
@@ -143,14 +150,19 @@ class ClientDiagnosticsViewModel(
             if (settings.isPaired && credentials.read() != null) {
                 runCatching { client.metricsCompare(changeAt) }
                     .onSuccess { metrics ->
-                        _state.update { it.copy(metrics = metrics, metricsSource = "Cat Server") }
+                        _state.update {
+                            it.copy(
+                                metrics = metrics,
+                                metricsSource =
+                                    context.getString(R.string.configurator_server_metrics),
+                            )
+                        }
                     }
                     .onFailure { error ->
                         _state.update {
                             it.copy(
                                 metrics = null,
-                                metricsSource =
-                                    "Server metrics unavailable: ${CatServerErrorMapper.code(error)}",
+                                metricsSource = CatServerErrorMapper.userMessage(context, error),
                             )
                         }
                     }
@@ -159,7 +171,8 @@ class ClientDiagnosticsViewModel(
                 _state.update {
                     it.copy(
                         metrics = localMetrics,
-                        metricsSource = "Local incidents; causality is not proven",
+                        metricsSource =
+                            context.getString(R.string.configurator_local_metrics_note),
                     )
                 }
             }
@@ -218,7 +231,7 @@ class ClientDiagnosticsViewModel(
                     it.copy(
                         serverIncidents = emptyList(),
                         serverEvidenceAvailable = false,
-                        serverError = CatServerErrorMapper.userMessage(error),
+                        serverError = CatServerErrorMapper.userMessage(context, error),
                     )
                 }
             }
