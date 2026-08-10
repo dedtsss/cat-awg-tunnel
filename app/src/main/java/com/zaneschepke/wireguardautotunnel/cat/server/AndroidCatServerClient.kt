@@ -20,6 +20,7 @@ import com.dedtsss.catawg.core.protocol.PairingCompleteResponse
 import com.dedtsss.catawg.core.protocol.ServerCapabilities
 import com.dedtsss.catawg.core.protocol.TimeRange
 import com.dedtsss.catawg.core.protocol.normalizeCertificateFingerprint
+import com.zaneschepke.wireguardautotunnel.data.cat.CatCredentialPersistenceFailure
 import com.zaneschepke.wireguardautotunnel.data.cat.CatServerSettingsStore
 import io.ktor.client.plugins.ResponseException
 import java.net.ConnectException
@@ -158,6 +159,8 @@ object CatServerErrorMapper {
     fun code(error: Throwable): String {
         val chain = errorChain(error)
         val stage = chain.firstNotNullOfOrNull { it as? CatServerOperationException }?.stage
+        val credentialFailure =
+            chain.firstNotNullOfOrNull { it as? CatCredentialPersistenceFailure }
         val response = chain.firstNotNullOfOrNull { it as? ResponseException }
         return when {
             chain.any { it is SSLPeerUnverifiedException } -> "HOSTNAME_MISMATCH"
@@ -168,6 +171,7 @@ object CatServerErrorMapper {
             response?.response?.status?.value in 401..403 -> "PAIRING_EXPIRED_OR_REVOKED"
             response?.response?.status?.value == 404 || response?.response?.status?.value == 406 ->
                 "INCOMPATIBLE_PROTOCOL"
+            credentialFailure != null -> credentialFailure.code
             stage != null -> stage.code
             chain.any {
                 it is UnknownHostException ||
@@ -192,6 +196,18 @@ object CatServerErrorMapper {
                 "Cat pairing could not complete. Generate a fresh one-time bootstrap payload and try again."
             "CREDENTIAL_PERSISTENCE_FAILED" ->
                 "Cat Server accepted pairing, but Android could not securely save its credential. Forget Cat Server, restart the app, then pair with a fresh payload."
+            "KEYSTORE_KEY_FAILED" ->
+                "Android Keystore could not load or create the Cat credential key. Pairing was not saved."
+            "ENCRYPT_FAILED" ->
+                "Android could not encrypt the Cat credential. Pairing was not saved."
+            "CREDENTIAL_WRITE_FAILED" ->
+                "Android could not write the encrypted Cat credential. Pairing was not saved."
+            "CREDENTIAL_READBACK_FAILED" ->
+                "Android wrote the Cat credential but its immediate verification failed. Pairing was not saved."
+            "CREDENTIAL_READ_FAILED" ->
+                "Android could not read the encrypted Cat credential. Local state was reset safely."
+            "DECRYPT_FAILED" ->
+                "Android could not decrypt the Cat credential. Local state was reset safely."
             "PAIRING_SETTINGS_FAILED" ->
                 "Cat Server credential was saved, but Android could not record the paired-device settings. Restart the app and check Cat Server status."
             "CAPABILITIES_FAILED" ->

@@ -2,6 +2,7 @@ package com.zaneschepke.wireguardautotunnel.cat.server
 
 import com.dedtsss.catawg.core.protocol.CatServerOperationException
 import com.dedtsss.catawg.core.protocol.CatServerOperationStage
+import com.zaneschepke.wireguardautotunnel.data.cat.CatCredentialPersistenceFailure
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Test
@@ -29,5 +30,20 @@ class CatServerErrorMapperTest {
             )
 
         assertEquals("CAPABILITIES_FAILED", CatServerErrorMapper.code(error))
+    }
+
+    @Test
+    fun `credential failure exposes only its safe persistence stage`() {
+        val error =
+            CatServerOperationException(
+                CatServerOperationStage.CREDENTIAL_PERSISTENCE,
+                CatCredentialPersistenceFailure(
+                    "ENCRYPT_FAILED",
+                    IllegalStateException("cipher provider detail"),
+                ),
+            )
+
+        assertEquals("ENCRYPT_FAILED", CatServerErrorMapper.code(error))
+        assertFalse(CatServerErrorMapper.userMessage(error).contains("cipher provider detail"))
     }
 }
