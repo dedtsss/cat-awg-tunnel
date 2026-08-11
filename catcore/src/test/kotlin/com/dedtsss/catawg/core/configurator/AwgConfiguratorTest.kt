@@ -186,4 +186,12 @@ class AwgConfiguratorTest {
         )
         assertTrue(ConfigurationFingerprint.changedParameters(profile, changedPrivate).isEmpty())
     }
+
+    @Test
+    fun `parameter guide has an explanation for every schema field including I1 through I5`() {
+        val names = AwgParameterExplanationCatalog.all.map { it.technicalName }.toSet()
+
+        assertTrue(AwgConfigSchema.interfaceFields.all { it in names })
+        assertTrue(AwgConfigSchema.peerFields.all { it in names })
+    }
 }
