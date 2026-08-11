@@ -5,15 +5,10 @@
 -->
 <data-extraction-rules>
     <cloud-backup>
-        <!--
-        <include .../>
-        <exclude .../>
-        -->
+        <!-- Keystore-encrypted Cat device credentials must not migrate to another install. -->
+        <exclude domain="file" path="no_backup/"/>
     </cloud-backup>
-    <!--
     <device-transfer>
-        <include .../>
-        <exclude .../>
+        <exclude domain="file" path="no_backup/"/>
     </device-transfer>
-    -->
 </data-extraction-rules>

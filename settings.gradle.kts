@@ -17,7 +17,7 @@ dependencyResolutionManagement {
 	}
 }
 
-rootProject.name = "WG Tunnel"
+rootProject.name = "Cat AWG Tunnel"
 
 include(":app")
 include(":logcatter")
@@ -26,3 +26,4 @@ include(":tunnel")
 include(":hevtunnel")
 include(":pinger")
 include(":pinger")
+include(":catcore")

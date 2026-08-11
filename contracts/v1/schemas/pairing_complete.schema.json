@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cat-awg.example/contracts/v1/pairing-complete.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "device", "deviceToken", "certificateFingerprint"],
+  "properties": {
+    "schemaVersion": {"const": "cat.v1"},
+    "deviceToken": {"type": "string", "minLength": 1},
+    "certificateFingerprint": {"type": "string"},
+    "device": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "createdAt", "lastAccessedAt", "revokedAt"],
+      "properties": {
+        "id": {"type": "string"}, "name": {"type": "string"},
+        "createdAt": {"type": "string", "format": "date-time"},
+        "lastAccessedAt": {"type": ["string", "null"]}, "revokedAt": {"type": ["string", "null"]}
+      }
+    }
+  }
+}

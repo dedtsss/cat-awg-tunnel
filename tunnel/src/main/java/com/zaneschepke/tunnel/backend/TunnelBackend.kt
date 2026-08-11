@@ -20,6 +20,10 @@ import com.zaneschepke.tunnel.state.BackendStatus
 import com.zaneschepke.tunnel.state.BootstrapState
 import com.zaneschepke.tunnel.state.EngineStartResult
 import com.zaneschepke.tunnel.state.KillSwitchState
+import com.zaneschepke.tunnel.state.ConnectionQualityEvaluator
+import com.zaneschepke.tunnel.state.ConnectionQualitySample
+import com.zaneschepke.tunnel.state.TunnelTrafficCounters
+import com.zaneschepke.tunnel.state.TunnelTrafficRateTracker
 import com.zaneschepke.tunnel.util.RootShell
 import com.zaneschepke.tunnel.util.RootShellException
 import com.zaneschepke.tunnel.util.hasDynamicEndpoints
@@ -78,6 +82,7 @@ class TunnelBackend(
     private val byHandle = ConcurrentHashMap<Int, Int>()
     private val byTunnelId = ConcurrentHashMap<Int, Int>()
     private val pendingResolutionJobs = ConcurrentHashMap<Int, Job>()
+    private val trafficRateTrackers = ConcurrentHashMap<Int, TunnelTrafficRateTracker>()
 
     private val endpointResolver =
         EndpointResolver(
@@ -352,6 +357,7 @@ class TunnelBackend(
     private suspend fun cleanup(tunnelId: Int) {
         pendingResolutionJobs.remove(tunnelId)?.cancel()
         tunnelJobs.remove(tunnelId)?.cancel()
+        trafficRateTrackers.remove(tunnelId)
 
         val activeTunnels = _status.value.activeTunnels
 
@@ -487,7 +493,8 @@ class TunnelBackend(
     fun updateTunnelTransportState(id: Int, newState: Tunnel.State) {
         updateActiveTunnel(id) { tunnel ->
             val stateChanged = tunnel.transportState != newState
-            tunnel.copy(
+            val updated =
+                tunnel.copy(
                 transportState = newState,
                 lastHealthChangeMs =
                     if (stateChanged || tunnel.lastHealthChangeMs == 0L) {
@@ -495,8 +502,31 @@ class TunnelBackend(
                     } else {
                         tunnel.lastHealthChangeMs
                     },
-            )
+                )
+            updated.withConnectionQuality()
         }
+    }
+
+    private fun ActiveTunnel.withConnectionQuality(nowMillis: Long = System.currentTimeMillis()):
+        ActiveTunnel {
+        val latestHandshakeMillis =
+            activeConfig
+                ?.peers
+                ?.maxOfOrNull { it.lastHandshakeSeconds ?: 0L }
+                ?.takeIf { it > 0L }
+                ?.times(1_000L)
+        return copy(
+            connectionQuality =
+                ConnectionQualityEvaluator.evaluate(
+                    ConnectionQualitySample(
+                        transportState = transportState,
+                        stateChangedAtMillis = lastHealthChangeMs,
+                        latestHandshakeEpochMillis = latestHandshakeMillis,
+                        lastRecoveryAttemptMillis = lastRecoveryAttemptMs,
+                        nowMillis = nowMillis,
+                    )
+                )
+        )
     }
 
     private fun needsBootstrap(mode: BackendMode, cfg: TunnelDnsConfig?): Boolean =
@@ -524,8 +554,27 @@ class TunnelBackend(
                                             }
 
                                             override fun updateActiveConfig(config: ActiveConfig?) {
+                                                val counters =
+                                                    TunnelTrafficCounters(
+                                                        receivedBytes =
+                                                            config?.peers?.sumOf { it.rxBytes ?: 0L }
+                                                                ?: 0L,
+                                                        sentBytes =
+                                                            config?.peers?.sumOf { it.txBytes ?: 0L }
+                                                                ?: 0L,
+                                                    )
+                                                val trafficRate =
+                                                    trafficRateTrackers
+                                                        .getOrPut(tunnel.id) {
+                                                            TunnelTrafficRateTracker()
+                                                        }
+                                                        .update(counters, System.currentTimeMillis())
                                                 updateActiveTunnel(tunnel.id) {
-                                                    it.copy(activeConfig = config)
+                                                    it.copy(
+                                                            activeConfig = config,
+                                                            trafficRate = trafficRate,
+                                                        )
+                                                        .withConnectionQuality()
                                                 }
                                             }
                                         },
@@ -627,8 +676,9 @@ class TunnelBackend(
                                             ) {
                                                 this@TunnelBackend.updateActiveTunnel(
                                                     tunnel.id,
-                                                    transform,
-                                                )
+                                                ) { active ->
+                                                    transform(active).withConnectionQuality()
+                                                }
                                             }
 
                                             override suspend fun emit(event: TunnelEvent) {

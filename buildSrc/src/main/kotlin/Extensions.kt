@@ -62,6 +62,17 @@ fun Project.getGitCommitHash(): String {
         .get()
 }
 
+/**
+ * The Cat test channel can override the base code from CI so every published build is strictly
+ * newer than the previous workflow run. Local builds retain the checked-in base code.
+ */
+fun Project.getCatTestVersionCode(): Int {
+    val configured =
+        providers.gradleProperty("catTestVersionCode").orNull?.toIntOrNull()
+            ?: System.getenv("CAT_TEST_VERSION_CODE")?.toIntOrNull()
+    return configured ?: Constants.VERSION_CODE
+}
+
 private fun Project.runGitCommand(args: List<String>): String {
     return providers
         .exec {

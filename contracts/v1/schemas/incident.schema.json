@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cat-awg.example/contracts/v1/incident.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "startAt", "endAt", "severity", "status", "classification", "confidence", "eventIds", "probableCause", "recommendations"],
+  "properties": {
+    "id": {"type": "string"},
+    "startAt": {"type": "string", "format": "date-time"},
+    "endAt": {"type": ["string", "null"], "format": "date-time"},
+    "severity": {"enum": ["INFO", "WARNING", "CRITICAL"]},
+    "status": {"enum": ["OPEN", "RESOLVED", "OBSERVING"]},
+    "classification": {"type": "string"},
+    "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+    "eventIds": {"type": "array", "items": {"type": "string"}},
+    "probableCause": {"type": ["string", "null"]},
+    "recommendations": {"type": "array", "items": {"type": "string"}}
+  }
+}

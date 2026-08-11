@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cat-awg.example/contracts/v1/server-capabilities.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "serverId", "agentVersion", "os", "architecture", "engines", "features", "managementApiVersion"],
+  "properties": {
+    "schemaVersion": {"const": "cat.v1"},
+    "serverId": {"type": "string", "minLength": 1},
+    "agentVersion": {"type": "string", "minLength": 1},
+    "os": {"type": "string", "minLength": 1},
+    "architecture": {"type": "string", "minLength": 1},
+    "engines": {
+      "type": "object",
+      "required": ["wireguard", "awg2", "awg3"],
+      "additionalProperties": {"$ref": "#/$defs/engine"}
+    },
+    "features": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["diagnostics", "configManagement", "serverRouting", "routingBackend", "aiGateway"],
+      "properties": {
+        "diagnostics": {"type": "boolean"},
+        "configManagement": {"type": "boolean"},
+        "serverRouting": {"type": "boolean"},
+        "routingBackend": {"enum": ["nftables", "iptables", null]},
+        "aiGateway": {"type": "boolean"}
+      }
+    },
+    "managementApiVersion": {"const": "v1"}
+  },
+  "$defs": {
+    "engine": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["supported"],
+      "properties": {"supported": {"type": "boolean"}, "version": {"type": ["string", "null"]}}
+    }
+  }
+}

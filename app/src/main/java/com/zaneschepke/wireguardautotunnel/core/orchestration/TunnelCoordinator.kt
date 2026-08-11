@@ -1,6 +1,7 @@
 package com.zaneschepke.wireguardautotunnel.core.orchestration
 
 import com.zaneschepke.tunnel.model.BackendMode
+import com.zaneschepke.wireguardautotunnel.cat.routing.DomainRoutingCoordinator
 import com.zaneschepke.wireguardautotunnel.core.event.TunnelErrorEvent
 import com.zaneschepke.wireguardautotunnel.core.tunnel.TunnelProvider
 import com.zaneschepke.wireguardautotunnel.data.repository.RoomDnsSettingsRepository
@@ -43,6 +44,7 @@ class TunnelCoordinator(
     monitoringSettingsRepository: MonitoringSettingsRepository,
     proxyRepository: ProxySettingsRepository,
     lockdownModeRepository: LockdownSettingsRepository,
+    private val domainRoutingCoordinator: DomainRoutingCoordinator,
     scope: CoroutineScope,
 ) {
 
@@ -188,6 +190,11 @@ class TunnelCoordinator(
                     )
                 }
             }
+
+        if (backendMode is BackendMode.Vpn) {
+            // The cache consulted by VpnService.Builder is refreshed before the regular start path.
+            domainRoutingCoordinator.refreshForTunnel(tunnelConfig.id)
+        }
 
         tunnelProvider
             .startTunnel(

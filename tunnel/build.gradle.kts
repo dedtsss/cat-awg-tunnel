@@ -57,6 +57,7 @@ android {
 }
 
 dependencies {
+    implementation(project(":catcore"))
     implementation(project(":hevtunnel"))
     api(project(":pinger"))
     implementation(project(":networkmonitor"))

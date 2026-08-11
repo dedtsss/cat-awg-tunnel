@@ -1,0 +1,5 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema", "$id": "https://cat-awg.example/contracts/v1/ai-chat-response.schema.json",
+  "type": "object", "additionalProperties": false, "required": ["schemaVersion", "message", "recommendations", "candidateOnly", "applied"],
+  "properties": {"schemaVersion": {"const": "cat.v1"}, "message": {"type": "string"}, "recommendations": {"type": "array", "items": {"type": "string"}}, "candidateOnly": {"const": true}, "applied": {"const": false}}
+}

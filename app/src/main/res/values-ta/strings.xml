@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Wg சுரங்கப்பாதை</string>
+    <string name="app_name">Cat AWG Tunnel</string>
     <string name="app_permission_title">WG சுரங்கப்பாதை கட்டுப்பாட்டு பாலம்</string>
     <string name="app_permission_description">Control tunnels and auto-tunnel features.</string>
     <string name="error_file_extension">கோப்பு ஒரு .conf அல்லது .zip அல்ல</string>

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">WG Tunnel</string>
+    <string name="app_name">Cat AWG Tunnel</string>
     <string name="app_permission_title">터널 및 자동 터널 기능을 제어합니다.</string>
     <string name="app_permission_description">터널 및 자동 터널 기능을 제어합니다.</string>
     <string name="error_file_extension">파일이 .conf 혹은 .zip 형식이 아님</string>

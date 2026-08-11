@@ -137,6 +137,12 @@ fun TunnelSettingsScreen(
             )
             SurfaceRow(
                 leading = { Icon(Icons.Outlined.Public, contentDescription = null) },
+                title = stringResource(R.string.domain_sites),
+                description = { DescriptionText(stringResource(R.string.domain_sites_desc)) },
+                onClick = { navController.push(Route.DomainSites(id = tunnel.id)) },
+            )
+            SurfaceRow(
+                leading = { Icon(Icons.Outlined.Public, contentDescription = null) },
                 title = stringResource(R.string.ipv6_settings),
                 onClick = { navController.push(Route.IPv6(tunnel.id)) },
             )

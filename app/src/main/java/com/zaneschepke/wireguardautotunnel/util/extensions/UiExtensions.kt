@@ -17,6 +17,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.vectorResource
 import com.zaneschepke.networkmonitor.AndroidNetworkMonitor
 import com.zaneschepke.tunnel.state.ActiveTunnel
+import com.zaneschepke.tunnel.state.TunnelConnectionQuality
+import com.zaneschepke.tunnel.state.TunnelTrafficRate
+import com.zaneschepke.tunnel.state.TrafficRateUnit
 import com.zaneschepke.wireguardautotunnel.R
 import com.zaneschepke.wireguardautotunnel.domain.enums.TunnelDnsMode
 import com.zaneschepke.wireguardautotunnel.domain.enums.TunnelMode
@@ -142,6 +145,60 @@ fun ActiveTunnel.statusText(context: Context): String {
         DisplayTunnelState.from(this).asLocalizedString(context),
     )
 }
+
+fun TunnelConnectionQuality.asLocalizedString(context: Context): String {
+    val label =
+        when (this) {
+            TunnelConnectionQuality.CONNECTING -> R.string.connection_quality_connecting
+            TunnelConnectionQuality.STABLE -> R.string.connection_quality_stable
+            TunnelConnectionQuality.UNSTABLE -> R.string.connection_quality_unstable
+            TunnelConnectionQuality.NO_CONNECTION -> R.string.connection_quality_no_connection
+        }
+    return context.getString(label)
+}
+
+/** The counter source stays platform-neutral; units and decimal punctuation follow app locale. */
+fun TunnelTrafficRate.asLocalizedString(context: Context): String =
+    "↓ ${context.formatTrafficRate(downloadBytesPerSecond)} · ↑ ${context.formatTrafficRate(uploadBytesPerSecond)}"
+
+/** Compact foreground text has no state words, leaving room for both native RX/TX rates. */
+fun TunnelTrafficRate.asCompactNotificationString(
+    context: Context,
+    quality: TunnelConnectionQuality,
+): String {
+    val down = compactRate(downloadBytesPerSecond, Locale.getDefault())
+    val up = compactRate(uploadBytesPerSecond, Locale.getDefault())
+    val indicator = quality.notificationIndicator()
+    return if (down.unit == up.unit) {
+        "$indicator ↓${down.amount} ↑${up.amount} ${context.trafficUnit(down.unit)}"
+    } else {
+        "$indicator ↓${down.amount} ${context.trafficUnit(down.unit)} · ↑${up.amount} ${context.trafficUnit(up.unit)}"
+    }
+}
+
+private fun Context.formatTrafficRate(bytesPerSecond: Long): String {
+    val rate = TunnelTrafficRate().compactRate(bytesPerSecond, Locale.getDefault())
+    return "${rate.amount} ${trafficUnit(rate.unit)}"
+}
+
+private fun Context.trafficUnit(unit: TrafficRateUnit): String =
+    getString(
+        when (unit) {
+            TrafficRateUnit.BIT -> R.string.traffic_rate_bits_unit
+            TrafficRateUnit.KBIT -> R.string.traffic_rate_kbits_unit
+            TrafficRateUnit.MBIT -> R.string.traffic_rate_mbits_unit
+            TrafficRateUnit.GBIT -> R.string.traffic_rate_gbits_unit
+        }
+    )
+
+/** Android status-bar icons are monochrome, so this is a stable content symbol rather than a color hack. */
+private fun TunnelConnectionQuality.notificationIndicator(): String =
+    when (this) {
+        TunnelConnectionQuality.STABLE -> "●"
+        TunnelConnectionQuality.UNSTABLE -> "▲"
+        TunnelConnectionQuality.NO_CONNECTION -> "×"
+        TunnelConnectionQuality.CONNECTING -> "○"
+    }
 
 fun ActiveTunnel.uptimeText(context: Context, now: Long): String? {
 

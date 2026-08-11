@@ -43,11 +43,15 @@ import com.zaneschepke.wireguardautotunnel.ui.navigation.Route.Addresses
 import com.zaneschepke.wireguardautotunnel.ui.navigation.Route.AndroidIntegrations
 import com.zaneschepke.wireguardautotunnel.ui.navigation.Route.Appearance
 import com.zaneschepke.wireguardautotunnel.ui.navigation.Route.AutoTunnel
+import com.zaneschepke.wireguardautotunnel.ui.navigation.Route.CatServer
+import com.zaneschepke.wireguardautotunnel.ui.navigation.Route.ClientDiagnostics
 import com.zaneschepke.wireguardautotunnel.ui.navigation.Route.Config
 import com.zaneschepke.wireguardautotunnel.ui.navigation.Route.ConfigEdit
 import com.zaneschepke.wireguardautotunnel.ui.navigation.Route.ConfigGlobal
+import com.zaneschepke.wireguardautotunnel.ui.navigation.Route.Configurator
 import com.zaneschepke.wireguardautotunnel.ui.navigation.Route.Display
 import com.zaneschepke.wireguardautotunnel.ui.navigation.Route.Dns
+import com.zaneschepke.wireguardautotunnel.ui.navigation.Route.DomainSites
 import com.zaneschepke.wireguardautotunnel.ui.navigation.Route.Donate
 import com.zaneschepke.wireguardautotunnel.ui.navigation.Route.IPv6
 import com.zaneschepke.wireguardautotunnel.ui.navigation.Route.Language
@@ -85,8 +89,10 @@ fun currentRouteAsNavbarState(
 ): State<NavbarState> {
     val keyboardController = LocalSoftwareKeyboardController.current
     val context = LocalContext.current
+    val catServerTitle = stringResource(R.string.cat_server)
+    val configuratorTitle = stringResource(R.string.cat_configurator)
 
-    return remember(route, globalState) {
+    return remember(route, globalState, catServerTitle, configuratorTitle) {
         derivedStateOf {
             when (route) {
                 Appearance -> {
@@ -183,6 +189,13 @@ fun currentRouteAsNavbarState(
                                 Icon(Icons.Rounded.Menu, stringResource(R.string.quick_actions))
                             }
                         },
+                    )
+                }
+                ClientDiagnostics -> {
+                    NavbarState(
+                        topLeading = { TvBackButton { navController.pop() } },
+                        showBottomItems = true,
+                        topTitle = "Client diagnostics",
                     )
                 }
                 ProxySettings -> {
@@ -324,6 +337,13 @@ fun currentRouteAsNavbarState(
                                 }
                             }
                         },
+                        showBottomItems = true,
+                    )
+                }
+                is DomainSites -> {
+                    NavbarState(
+                        topLeading = { TvBackButton { navController.pop() } },
+                        topTitle = "Sites",
                         showBottomItems = true,
                     )
                 }
@@ -577,6 +597,20 @@ fun currentRouteAsNavbarState(
                     NavbarState(
                         topLeading = { TvBackButton { navController.pop() } },
                         topTitle = context.getString(R.string.monitoring),
+                        showBottomItems = true,
+                    )
+                }
+                CatServer -> {
+                    NavbarState(
+                        topLeading = { TvBackButton { navController.pop() } },
+                        topTitle = catServerTitle,
+                        showBottomItems = true,
+                    )
+                }
+                Configurator -> {
+                    NavbarState(
+                        topLeading = { TvBackButton { navController.pop() } },
+                        topTitle = configuratorTitle,
                         showBottomItems = true,
                     )
                 }

@@ -8,6 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.zaneschepke.tunnel.state.ActiveTunnel
+import com.zaneschepke.wireguardautotunnel.util.extensions.asLocalizedString
 import com.zaneschepke.wireguardautotunnel.util.extensions.statusText
 import com.zaneschepke.wireguardautotunnel.util.extensions.uptimeText
 
@@ -19,6 +20,17 @@ fun TunnelOverviewSection(activeTunnel: ActiveTunnel, now: Long) {
 
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(text = activeTunnel.statusText(context), style = style, color = color)
+
+        Text(
+            text =
+                context.getString(
+                    com.zaneschepke.wireguardautotunnel.R.string.tunnel_connection_telemetry_format,
+                    activeTunnel.connectionQuality.asLocalizedString(context),
+                    activeTunnel.trafficRate.asLocalizedString(context),
+                ),
+            style = style,
+            color = color,
+        )
 
         activeTunnel.uptimeText(context, now)?.let { Text(text = it, style = style, color = color) }
     }

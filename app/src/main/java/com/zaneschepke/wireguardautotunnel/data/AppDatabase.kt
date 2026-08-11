@@ -9,6 +9,8 @@ import androidx.room.TypeConverters
 import androidx.room.migration.AutoMigrationSpec
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.zaneschepke.wireguardautotunnel.data.dao.AutoTunnelSettingsDao
+import com.zaneschepke.wireguardautotunnel.data.dao.CatDiagnosticsDao
+import com.zaneschepke.wireguardautotunnel.data.dao.CatDomainRuleDao
 import com.zaneschepke.wireguardautotunnel.data.dao.DnsSettingsDao
 import com.zaneschepke.wireguardautotunnel.data.dao.GeneralSettingsDao
 import com.zaneschepke.wireguardautotunnel.data.dao.LockdownSettingsDao
@@ -16,6 +18,9 @@ import com.zaneschepke.wireguardautotunnel.data.dao.MonitoringSettingsDao
 import com.zaneschepke.wireguardautotunnel.data.dao.ProxySettingsDao
 import com.zaneschepke.wireguardautotunnel.data.dao.TunnelConfigDao
 import com.zaneschepke.wireguardautotunnel.data.entity.AutoTunnelSettings
+import com.zaneschepke.wireguardautotunnel.data.entity.CatDiagnosticEvent
+import com.zaneschepke.wireguardautotunnel.data.entity.CatDomainRule
+import com.zaneschepke.wireguardautotunnel.data.entity.CatIncident
 import com.zaneschepke.wireguardautotunnel.data.entity.DnsSettings
 import com.zaneschepke.wireguardautotunnel.data.entity.GeneralSettings
 import com.zaneschepke.wireguardautotunnel.data.entity.LockdownSettings
@@ -33,8 +38,11 @@ import com.zaneschepke.wireguardautotunnel.data.entity.TunnelConfig
             MonitoringSettings::class,
             DnsSettings::class,
             LockdownSettings::class,
+            CatDomainRule::class,
+            CatDiagnosticEvent::class,
+            CatIncident::class,
         ],
-    version = 36,
+    version = 37,
     autoMigrations =
         [
             AutoMigration(from = 1, to = 2),
@@ -69,6 +77,7 @@ import com.zaneschepke.wireguardautotunnel.data.entity.TunnelConfig
             AutoMigration(from = 33, to = 34, spec = SeamlessRecoveryMigration::class),
             AutoMigration(from = 34, to = 35, spec = TunnelDnsMigration::class),
             AutoMigration(from = 35, to = 36),
+            AutoMigration(from = 36, to = 37),
         ],
     exportSchema = true,
 )
@@ -87,6 +96,10 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun lockdownSettingsDao(): LockdownSettingsDao
 
     abstract fun dnsSettingsDao(): DnsSettingsDao
+
+    abstract fun catDomainRuleDao(): CatDomainRuleDao
+
+    abstract fun catDiagnosticsDao(): CatDiagnosticsDao
 }
 
 @DeleteColumn(tableName = "Settings", columnName = "default_tunnel")

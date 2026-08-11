@@ -3,6 +3,9 @@ package com.zaneschepke.wireguardautotunnel.di
 import android.content.Context
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import com.dedtsss.catawg.core.diagnostics.ClientDiagnosticRecorder
+import com.dedtsss.catawg.core.diagnostics.DiagnosticStore
+import com.dedtsss.catawg.core.routing.DomainRuleRepository
 import com.zaneschepke.wireguardautotunnel.R
 import com.zaneschepke.wireguardautotunnel.data.AppDatabase
 import com.zaneschepke.wireguardautotunnel.data.DataStoreManager
@@ -13,7 +16,9 @@ import com.zaneschepke.wireguardautotunnel.data.migrations.MIGRATION_28_29
 import com.zaneschepke.wireguardautotunnel.data.repository.DataStoreAppStateRepository
 import com.zaneschepke.wireguardautotunnel.data.repository.InstalledAndroidPackageRepository
 import com.zaneschepke.wireguardautotunnel.data.repository.RoomAutoTunnelSettingsRepository
+import com.zaneschepke.wireguardautotunnel.data.repository.RoomDiagnosticStore
 import com.zaneschepke.wireguardautotunnel.data.repository.RoomDnsSettingsRepository
+import com.zaneschepke.wireguardautotunnel.data.repository.RoomDomainRuleRepository
 import com.zaneschepke.wireguardautotunnel.data.repository.RoomLockdownSettingsRepository
 import com.zaneschepke.wireguardautotunnel.data.repository.RoomMonitoringSettingsRepository
 import com.zaneschepke.wireguardautotunnel.data.repository.RoomProxySettingsRepository
@@ -28,6 +33,8 @@ import com.zaneschepke.wireguardautotunnel.domain.repository.LockdownSettingsRep
 import com.zaneschepke.wireguardautotunnel.domain.repository.MonitoringSettingsRepository
 import com.zaneschepke.wireguardautotunnel.domain.repository.ProxySettingsRepository
 import com.zaneschepke.wireguardautotunnel.domain.repository.TunnelRepository
+import java.time.Duration
+import kotlinx.serialization.json.Json
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.annotation.KoinExperimentalAPI
 import org.koin.core.annotation.KoinViewModelScopeApi
@@ -64,6 +71,13 @@ val databaseModule = module {
     single { get<AppDatabase>().monitoringSettingsDao() }
     single { get<AppDatabase>().proxySettingsDoa() }
     single { get<AppDatabase>().tunnelConfigDoa() }
+    single { get<AppDatabase>().catDomainRuleDao() }
+    single { get<AppDatabase>().catDiagnosticsDao() }
+
+    // Koin's constructor DSL resolves every constructor parameter, including parameters with
+    // Kotlin defaults. Keep serialization and diagnostic policy explicit in production DI so a
+    // default Json/IncidentDetector is never mistaken for an injectable binding.
+    single<Json> { Json { ignoreUnknownKeys = true; encodeDefaults = true } }
 
     single { DataStoreManager(androidContext(), get(named(Dispatcher.IO))) }
 
@@ -77,6 +91,9 @@ val databaseModule = module {
     singleOf(::RoomProxySettingsRepository) bind ProxySettingsRepository::class
     singleOf(::RoomSettingsRepository) bind GeneralSettingRepository::class
     singleOf(::RoomTunnelRepository) bind TunnelRepository::class
+    single<DomainRuleRepository> { RoomDomainRuleRepository(get(), get()) }
+    single<DiagnosticStore> { RoomDiagnosticStore(get(), get()) }
+    single { ClientDiagnosticRecorder(get(), retention = Duration.ofHours(48)) }
     viewModelScope {
         scoped<InstalledPackageRepository> {
             InstalledAndroidPackageRepository(

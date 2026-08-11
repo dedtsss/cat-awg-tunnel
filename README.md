@@ -1,5 +1,5 @@
 <h1 align="center">
-WG Tunnel
+Cat AWG Tunnel
 </h1>
 
 <div align="center">
@@ -49,7 +49,7 @@ and [AmneziaWG](https://docs.amnezia.org/documentation/amnezia-wg/)
 
 ## About
 
-WG Tunnel is an alternative Android client for WireGuard and AmneziaWG, inspired by the official WireGuard Android app. It fills gaps in the official client by adding advanced features like auto-tunneling, AmneziaWG support, different app modes like **Lockdown** (a custom kill switch for leak prevention), and **Local Proxy** (expose a tunnel over a local SOCKS5/HTTP proxy server) for enhanced privacy, censorship resistance, and flexibility.
+Cat AWG Tunnel is a controlled, MIT-derived fork of WG Tunnel for WireGuard and AmneziaWG. It preserves the upstream client architecture and features while adding API-33+ domain-to-IP local bypass, local incident diagnostics, and a portable WG/AWG configurator foundation. See [Cat architecture notes](docs/cat/ARCHITECTURE.md) and retain the upstream acknowledgements below when redistributing.
  
 </div>
 

@@ -1,0 +1,110 @@
+name: cat-debug-apk
+
+permissions:
+  contents: read
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: cat-debug-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CAT_TEST_VERSION_BASE: '50202'
+
+jobs:
+  verify-and-package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Configure permanent Cat test-channel signing
+        env:
+          CAT_AWG_TEST_KEYSTORE: ${{ secrets.CAT_AWG_TEST_KEYSTORE }}
+          CAT_AWG_TEST_STORE_PASSWORD: ${{ secrets.CAT_AWG_TEST_STORE_PASSWORD }}
+          CAT_AWG_TEST_KEY_ALIAS: ${{ secrets.CAT_AWG_TEST_KEY_ALIAS }}
+          CAT_AWG_TEST_KEY_PASSWORD: ${{ secrets.CAT_AWG_TEST_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "$CAT_AWG_TEST_KEYSTORE" || { echo 'CAT_AWG_TEST_KEYSTORE is required'; exit 1; }
+          test -n "$CAT_AWG_TEST_STORE_PASSWORD" || { echo 'CAT_AWG_TEST_STORE_PASSWORD is required'; exit 1; }
+          test -n "$CAT_AWG_TEST_KEY_ALIAS" || { echo 'CAT_AWG_TEST_KEY_ALIAS is required'; exit 1; }
+          test -n "$CAT_AWG_TEST_KEY_PASSWORD" || { echo 'CAT_AWG_TEST_KEY_PASSWORD is required'; exit 1; }
+          install -d -m 700 "$RUNNER_TEMP/cat-signing"
+          printf '%s' "$CAT_AWG_TEST_KEYSTORE" | base64 --decode > "$RUNNER_TEMP/cat-signing/cat-awg-test.jks"
+          chmod 600 "$RUNNER_TEMP/cat-signing/cat-awg-test.jks"
+          echo "CAT_TEST_KEYSTORE_PATH=$RUNNER_TEMP/cat-signing/cat-awg-test.jks" >> "$GITHUB_ENV"
+          echo "CAT_TEST_STORE_PASSWORD=$CAT_AWG_TEST_STORE_PASSWORD" >> "$GITHUB_ENV"
+          echo "CAT_TEST_KEY_ALIAS=$CAT_AWG_TEST_KEY_ALIAS" >> "$GITHUB_ENV"
+          echo "CAT_TEST_KEY_PASSWORD=$CAT_AWG_TEST_KEY_PASSWORD" >> "$GITHUB_ENV"
+
+      - name: Run focused Cat, telemetry and Android JVM tests
+        run: >-
+          ./gradlew :catcore:test :tunnel:testDebugUnitTest :app:testStandaloneDebugUnitTest
+          --no-daemon --no-parallel --max-workers=1
+
+      - name: Assemble one signed installable APK
+        env:
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_RUN_NUMBER: ${{ github.run_number }}
+        run: |
+          set -euo pipefail
+          version_code=$((CAT_TEST_VERSION_BASE + GITHUB_RUN_NUMBER * 2))
+          # Artifact #24 was physically published with versionCode 50250.
+          test "$version_code" -gt 50250
+          echo "CAT_TEST_VERSION_CODE=$version_code" >> "$GITHUB_ENV"
+          ./gradlew :app:assembleStandaloneDebug --no-daemon --no-parallel --max-workers=1 \
+            -PnoSplits=true -PcatTestVersionCode="$version_code"
+          mapfile -t apk_paths < <(find app/build/outputs/apk/standalone/debug -type f -name '*.apk')
+          test "${#apk_paths[@]}" -eq 1
+          source_apk="${apk_paths[0]}"
+          cp "$source_apk" "$RUNNER_TEMP/cat-awg-test.apk"
+
+      - name: Verify signer, version and APK digest
+        run: |
+          set -euo pipefail
+          sdk_root="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          test -n "$sdk_root"
+          apksigner_bin="$(find "$sdk_root/build-tools" -type f -name apksigner -print | sort -V | tail -1)"
+          aapt2_bin="$(find "$sdk_root/build-tools" -type f -name aapt2 -print | sort -V | tail -1)"
+          test -x "$apksigner_bin" && test -x "$aapt2_bin"
+          signer="$("$apksigner_bin" verify --print-certs "$RUNNER_TEMP/cat-awg-test.apk" | sed -n 's/.*certificate SHA-256 digest: //p')"
+          code="$("$aapt2_bin" dump badging "$RUNNER_TEMP/cat-awg-test.apk" | sed -n "s/.*versionCode='\\([^']*\\)'.*/\\1/p")"
+          test -n "$signer"
+          test "$code" = "$CAT_TEST_VERSION_CODE"
+          digest="$(sha256sum "$RUNNER_TEMP/cat-awg-test.apk" | awk '{print $1}')"
+          echo "Cat test-channel signer SHA-256: $signer"
+          echo "Cat test-channel versionCode: $code"
+          echo "Cat APK SHA-256: $digest"
+
+      - name: Name APK with commit provenance
+        id: apk
+        shell: bash
+        run: |
+          sha="$(git rev-parse --short=12 HEAD)"
+          target="cat-awg-tunnel-debug-${sha}-v${CAT_TEST_VERSION_CODE}.apk"
+          cp "$RUNNER_TEMP/cat-awg-test.apk" "$target"
+          echo "path=$target" >> "$GITHUB_OUTPUT"
+
+      - name: Upload installable debug APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: cat-awg-tunnel-debug-${{ github.sha }}
+          path: ${{ steps.apk.outputs.path }}
+          if-no-files-found: error
+          retention-days: 14

@@ -45,7 +45,14 @@ internal class ServiceManager(val context: Context) {
         _companionService.value = null
     }
 
-    fun clearVpnService() {
+    /**
+     * Clears only the service instance that registered itself. Android can briefly overlap an old
+     * and a replacement VpnService during restart; an old onDestroy must not sever the new socket
+     * protector or leave a stale service reference in the flow.
+     */
+    fun clearVpnService(expected: VpnService? = null) {
+        val current = _vpnService.value
+        if (expected != null && current !== expected) return
         ProxyBackend.setSocketProtector(null)
         _vpnService.value = null
     }
@@ -96,7 +103,7 @@ internal class ServiceManager(val context: Context) {
                 vpnServiceFlow.first { it == null }
             }
         } finally {
-            clearVpnService()
+            clearVpnService(service)
         }
     }
 

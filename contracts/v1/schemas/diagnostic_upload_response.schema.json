@@ -1,0 +1,5 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema", "$id": "https://cat-awg.example/contracts/v1/diagnostic-upload-response.schema.json",
+  "type": "object", "additionalProperties": false, "required": ["schemaVersion", "events"],
+  "properties": {"schemaVersion": {"const": "cat.v1"}, "events": {"type": "array", "items": {"$ref": "https://cat-awg.example/contracts/v1/diagnostic-event.schema.json"}}}
+}

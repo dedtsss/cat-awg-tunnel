@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">WG Tunnel</string>
+    <string name="app_name">Cat AWG Tunnel</string>
     <string name="app_permission_title">Pont de contrôle du tunnel WG.</string>
     <string name="app_permission_description">Control tunnels and auto-tunnel features.</string>
     <string name="error_file_extension">Le fichier n\'est pas un .conf ou .zip</string>

@@ -17,6 +17,8 @@ data class ActiveTunnel(
     val uptime: Long? = null,
     val recoveryAttempts: Int = 0,
     val lastRecoveryAttemptMs: Long = 0L,
+    val trafficRate: TunnelTrafficRate = TunnelTrafficRate(),
+    val connectionQuality: TunnelConnectionQuality = TunnelConnectionQuality.CONNECTING,
     val tunnelDnsConfig: TunnelDnsConfig? = null,
     val lastBootstrapResolution: BootstrapResolution? = null,
 ) {

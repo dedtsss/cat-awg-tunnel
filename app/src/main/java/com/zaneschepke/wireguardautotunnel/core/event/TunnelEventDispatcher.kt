@@ -54,7 +54,8 @@ class TunnelEventDispatcher(
                                     )
                                 )
                             },
-                            backgroundAction = { notificationManager.showIpv4Fallback(name) },
+                            // Routine recovery is already reflected in the primary VPN health
+                            // indicator. Do not create a second background notification.
                         )
                     }
 
@@ -76,7 +77,6 @@ class TunnelEventDispatcher(
                                     )
                                 )
                             },
-                            backgroundAction = { notificationManager.showIpv6Recovery(name) },
                         )
                     }
 
@@ -98,7 +98,6 @@ class TunnelEventDispatcher(
                                     )
                                 )
                             },
-                            backgroundAction = { notificationManager.showDynamicDnsUpdate(name) },
                         )
                     }
 
@@ -137,9 +136,6 @@ class TunnelEventDispatcher(
                                         type = ToastType.Info,
                                     )
                                 )
-                            },
-                            backgroundAction = {
-                                notificationManager.showSeamlessRecoveryAttempt(name)
                             },
                         )
                     }
@@ -250,12 +246,12 @@ class TunnelEventDispatcher(
     private fun showOrNotify(
         scope: CoroutineScope,
         foregroundAction: suspend () -> Unit,
-        backgroundAction: () -> Unit,
+        backgroundAction: (() -> Unit)? = null,
     ) {
         if (appVisibilityObserver.isForeground.value) {
             scope.launch { foregroundAction() }
         } else {
-            backgroundAction()
+            backgroundAction?.invoke()
         }
     }
 

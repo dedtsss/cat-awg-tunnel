@@ -4,6 +4,7 @@
 
 	<uses-permission android:name="android.permission.INTERNET" />
 	<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+	<uses-permission android:name="android.permission.CAMERA" />
 
     <!--for split tunneling-->
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"
@@ -80,6 +81,22 @@
                 <data android:scheme="wg" />
             </intent-filter>
 
+            <!-- Product pairing link. The full payload remains one-time and is parsed in memory. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="catpair" />
+            </intent-filter>
+
+            <!-- Legacy Cat links remain import-only for a migration period. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="cat" android:host="pair" />
+            </intent-filter>
+
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 				<action android:name="android.intent.action.SHOW_APP_INFO" />
@@ -119,6 +136,13 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="application/zip" />
                 <data android:mimeType="application/x-zip-compressed" />
+            </intent-filter>
+
+            <!-- Cat domain-routing share target: Chrome/Firefox and other apps share URL/text. -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
             </intent-filter>
 
             <!-- .conf files  -->

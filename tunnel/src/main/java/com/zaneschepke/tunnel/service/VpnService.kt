@@ -2,16 +2,17 @@ package com.zaneschepke.tunnel.service
 
 import android.content.Context
 import android.content.Intent
+import android.net.IpPrefix
 import android.net.TrafficStats
 import android.os.Build
 import android.os.ParcelFileDescriptor
 import android.system.OsConstants
 import com.zaneschepke.hevtunnel.HevTunnelConfig
 import com.zaneschepke.hevtunnel.TProxyService
+import com.dedtsss.catawg.core.routing.DomainRouteProvider
 import com.zaneschepke.tunnel.Tunnel
 import com.zaneschepke.tunnel.backend.Backend
 import com.zaneschepke.tunnel.backend.KillSwitch
-import com.zaneschepke.tunnel.backend.ProxyBackend
 import com.zaneschepke.tunnel.backend.SocketProtector
 import com.zaneschepke.tunnel.backend.dns.TunnelDnsConfig
 import com.zaneschepke.tunnel.model.KillSwitchConfig
@@ -23,6 +24,7 @@ import com.zaneschepke.wireguardautotunnel.parser.Config
 import java.io.IOException
 import java.net.Inet4Address
 import java.net.Inet6Address
+import java.net.InetAddress
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.CoroutineScope
@@ -39,6 +41,7 @@ class VpnService : android.net.VpnService(), KillSwitch, SocketProtector {
 
     private val backend: Backend by inject(Backend::class.java)
     private val serviceManager: ServiceManager by inject(ServiceManager::class.java)
+    private val domainRouteProvider: DomainRouteProvider by inject(DomainRouteProvider::class.java)
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val shutdownScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -57,8 +60,7 @@ class VpnService : android.net.VpnService(), KillSwitch, SocketProtector {
     override fun onDestroy() {
         Timber.d("VpnService destroyed")
         try {
-            ProxyBackend.setSocketProtector(null)
-            serviceManager.clearVpnService()
+            serviceManager.clearVpnService(this)
             closeVpnTunnelFd()
             disableKillSwitch()
             hevBridgeJob?.cancel()
@@ -71,7 +73,7 @@ class VpnService : android.net.VpnService(), KillSwitch, SocketProtector {
 
     override fun onRevoke() {
         Timber.w("VPN revoked by user via system settings")
-        ProxyBackend.setSocketProtector(null)
+        serviceManager.clearVpnService(this)
         disableKillSwitch()
         stopHevSocks5Bridge()
         shutdownScope.launch { backend.stopAllActiveTunnels() }
@@ -270,6 +272,29 @@ class VpnService : android.net.VpnService(), KillSwitch, SocketProtector {
                                 }
                                 if (address is Inet4Address) hasIpv4 = true else hasIpv6 = true
                             }
+                    }
+
+                    // Android 13+ exposes a native exception route API. Cat domain rules resolve
+                    // to explicitly observed IPs; no complement-CIDR workaround is used on older
+                    // releases, and this always runs before establish().
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        domainRouteProvider.exclusionsFor(tunnel.id).forEach { exclusion ->
+                            runCatching {
+                                    val address = InetAddress.getByName(exclusion.address)
+                                    excludeRoute(IpPrefix(address, exclusion.prefixLength))
+                                }
+                                .onSuccess {
+                                    Timber.d(
+                                        "Added Cat local-direct exclusion ${exclusion.address}/${exclusion.prefixLength}"
+                                    )
+                                }
+                                .onFailure { error ->
+                                    Timber.w(
+                                        error,
+                                        "Ignored invalid Cat domain route exclusion ${exclusion.address}"
+                                    )
+                                }
+                        }
                     }
 
                     // "Kill-switch" semantics (mirrors wireguard-android)

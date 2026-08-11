@@ -36,6 +36,27 @@ sealed class Route : NavKey {
             get() = true
     }
 
+    @Keep
+    @Serializable
+    data object ClientDiagnostics : Route(), SecureRoute {
+        override val requiresProtection: Boolean
+            get() = true
+    }
+
+    @Keep
+    @Serializable
+    data object CatServer : Route(), SecureRoute {
+        override val requiresProtection: Boolean
+            get() = true
+    }
+
+    @Keep
+    @Serializable
+    data object Configurator : Route(), SecureRoute {
+        override val requiresProtection: Boolean
+            get() = true
+    }
+
     @Keep @Serializable data object Appearance : Route()
 
     @Keep @Serializable data object Language : Route()
@@ -70,6 +91,13 @@ sealed class Route : NavKey {
     @Keep
     @Serializable
     data class SplitTunnel(val id: Int) : Route(), SecureRoute {
+        override val requiresProtection: Boolean
+            get() = true
+    }
+
+    @Keep
+    @Serializable
+    data class DomainSites(val id: Int) : Route(), SecureRoute {
         override val requiresProtection: Boolean
             get() = true
     }
@@ -191,7 +219,8 @@ enum class Tab(
                 is Route.Lock,
                 is Route.Config,
                 is Route.IPv6,
-                is Route.SplitTunnel -> TUNNELS
+                is Route.SplitTunnel,
+                is Route.DomainSites -> TUNNELS
                 is Route.AutoTunnel,
                 Route.WifiDetectionMethod,
                 Route.WifiPreferences,
@@ -210,7 +239,10 @@ enum class Tab(
                 Route.TunnelGlobals,
                 Route.Security,
                 Route.Monitoring,
-                Route.Logs -> SETTINGS
+                Route.Logs,
+                Route.ClientDiagnostics,
+                Route.CatServer,
+                Route.Configurator -> SETTINGS
                 is Route.Support,
                 Route.License,
                 Route.Donate,

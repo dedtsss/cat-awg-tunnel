@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">WG Tunnel</string>
+    <string name="app_name">Cat AWG Tunnel</string>
     <string name="app_permission_title">控制隧道和自动隧道功能。</string>
     <string name="app_permission_description">管理隧道和自动隧道功能</string>
     <string name="error_file_extension">文件类型不是 .conf 或 .zip</string>

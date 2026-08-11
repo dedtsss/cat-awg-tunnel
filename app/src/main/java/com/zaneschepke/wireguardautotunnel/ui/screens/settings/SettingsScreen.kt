@@ -306,6 +306,28 @@ fun SettingsScreen(
                 onClick = { navController.push(Route.Logs) },
             )
             SurfaceRow(
+                leading = { Icon(Icons.Outlined.MonitorHeart, contentDescription = null) },
+                title = stringResource(R.string.client_diagnostics),
+                description = {
+                    DescriptionText(stringResource(R.string.client_diagnostics_desc))
+                },
+                onClick = { navController.push(Route.ClientDiagnostics) },
+            )
+            SurfaceRow(
+                leading = { Icon(Icons.Outlined.Public, contentDescription = null) },
+                title = stringResource(R.string.cat_server),
+                description = {
+                    DescriptionText(stringResource(R.string.cat_server_settings_desc))
+                },
+                onClick = { navController.push(Route.CatServer) },
+            )
+            SurfaceRow(
+                leading = { Icon(Icons.Outlined.SettingsBackupRestore, contentDescription = null) },
+                title = stringResource(R.string.cat_configurator),
+                description = { DescriptionText(stringResource(R.string.cat_configurator_desc)) },
+                onClick = { navController.push(Route.Configurator) },
+            )
+            SurfaceRow(
                 leading = { Icon(Icons.Outlined.SettingsBackupRestore, contentDescription = null) },
                 title = stringResource(R.string.backup_and_restore),
                 onClick = { showBackupSheet = true },

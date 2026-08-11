@@ -1,0 +1,5 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema", "$id": "https://cat-awg.example/contracts/v1/incidents-response.schema.json",
+  "type": "object", "additionalProperties": false, "required": ["schemaVersion", "incidents"],
+  "properties": {"schemaVersion": {"const": "cat.v1"}, "incidents": {"type": "array", "items": {"$ref": "https://cat-awg.example/contracts/v1/incident.schema.json"}}}
+}

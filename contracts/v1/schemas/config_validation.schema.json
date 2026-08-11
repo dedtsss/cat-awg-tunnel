@@ -1,0 +1,5 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema", "$id": "https://cat-awg.example/contracts/v1/config-validation.schema.json",
+  "type": "object", "additionalProperties": false, "required": ["schemaVersion", "valid", "issues", "publicProfile", "capabilitySatisfied"],
+  "properties": {"schemaVersion": {"const": "cat.v1"}, "valid": {"type": "boolean"}, "issues": {"type": "array", "items": {"type": "object"}}, "publicProfile": {"$ref": "https://cat-awg.example/contracts/v1/public-config-profile.schema.json"}, "capabilitySatisfied": {"type": "boolean"}}
+}

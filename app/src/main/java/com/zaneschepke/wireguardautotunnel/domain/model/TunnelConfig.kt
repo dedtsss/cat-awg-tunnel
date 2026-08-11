@@ -65,13 +65,19 @@ data class TunnelConfig(
 
         override val features: Set<Tunnel.Feature>
             get() = buildSet {
-                if (monitoringSettings.tunnelStatisticsEnabled) {
-                    add(
-                        Tunnel.Feature.ActiveConfigMonitor(
-                            monitoringSettings.tunnelStatisticsPollInterval
-                        )
+                // The same three-second native counter sample drives both the optional expanded
+                // statistics UI and the primary VPN notification. It is intentionally retained
+                // while detailed statistics are hidden so the foreground notification stays useful
+                // without a separate polling service or wake lock.
+                add(
+                    Tunnel.Feature.ActiveConfigMonitor(
+                        if (monitoringSettings.tunnelStatisticsEnabled) {
+                            monitoringSettings.tunnelStatisticsPollInterval.coerceIn(2, 3)
+                        } else {
+                            3
+                        }
                     )
-                }
+                )
                 add(
                     Tunnel.Feature.Recovery(
                         seamlessRecovery = generalSettings.seamlessRecoveryEnabled,
