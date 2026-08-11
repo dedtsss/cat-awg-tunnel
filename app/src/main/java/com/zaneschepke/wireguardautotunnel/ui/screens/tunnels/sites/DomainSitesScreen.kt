@@ -46,6 +46,7 @@ fun DomainSitesScreen(viewModel: DomainSitesViewModel) {
     var search by rememberSaveable { mutableStateOf("") }
     var showAdd by rememberSaveable { mutableStateOf(false) }
     var showDiagnose by rememberSaveable { mutableStateOf(false) }
+    var editingRule by remember { mutableStateOf<DomainRule?>(null) }
     var exportJson by rememberSaveable { mutableStateOf(true) }
     val exportLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/plain")) { uri ->
@@ -140,18 +141,26 @@ fun DomainSitesScreen(viewModel: DomainSitesViewModel) {
                     rule = rule,
                     sharedDomains = sharedDomains,
                     onToggle = { viewModel.toggle(rule) },
+                    onEdit = { editingRule = rule },
                     onDelete = { viewModel.delete(rule) },
                 )
             }
         }
     }
 
-    if (showAdd) {
-        AddDomainDialog(
-            onDismiss = { showAdd = false },
-            onAdd = { domain, mode, target, comment ->
-                viewModel.add(domain, mode, target, comment)
+    if (showAdd || editingRule != null) {
+        DomainRuleDialog(
+            initial = editingRule,
+            onDismiss = {
                 showAdd = false
+                editingRule = null
+            },
+            onAdd = { domain, mode, target, comment ->
+                editingRule?.let { rule ->
+                    viewModel.update(rule, domain, mode, target, comment)
+                } ?: viewModel.add(domain, mode, target, comment)
+                showAdd = false
+                editingRule = null
             },
         )
     }
@@ -217,7 +226,11 @@ fun DomainSitesScreen(viewModel: DomainSitesViewModel) {
                                 ?: stringResource(R.string.domain_sites_unknown),
                         )
                     )
-                    diagnosis.ipv4.flatMap { it.sharedWithDomains }.distinct().takeIf { it.isNotEmpty() }?.let {
+                    (diagnosis.ipv4 + diagnosis.ipv6)
+                        .flatMap { it.sharedWithDomains }
+                        .distinct()
+                        .takeIf { it.isNotEmpty() }
+                        ?.let {
                         Text(stringResource(R.string.domain_sites_shared_ip_warning, it.joinToString()))
                     }
                     Text(diagnosis.evidenceNote)
@@ -232,6 +245,7 @@ private fun DomainRuleRow(
     rule: DomainRule,
     sharedDomains: List<String>,
     onToggle: () -> Unit,
+    onEdit: () -> Unit,
     onDelete: () -> Unit,
 ) {
     Card(modifier = Modifier.fillMaxWidth()) {
@@ -285,7 +299,10 @@ private fun DomainRuleRow(
                 )
             )
             rule.comment?.let { Text(stringResource(R.string.domain_sites_note, it)) }
-            TextButton(onClick = onDelete) { Text(stringResource(R.string.delete)) }
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                TextButton(onClick = onEdit) { Text(stringResource(R.string.domain_sites_edit)) }
+                TextButton(onClick = onDelete) { Text(stringResource(R.string.delete)) }
+            }
         }
     }
 }
@@ -296,26 +313,39 @@ private fun com.dedtsss.catawg.core.routing.DiagnosedAddress.describe(): String 
         append(" → ")
         append(route)
         ruleDomain?.let { append(" ($it)") }
+        knownByDomains.takeIf { it.isNotEmpty() }?.let { append("; known: ").append(it.joinToString()) }
     }
 
 @Composable
-private fun AddDomainDialog(
+private fun DomainRuleDialog(
+    initial: DomainRule?,
     onDismiss: () -> Unit,
     onAdd: (String, DomainMatchMode, DomainRouteTarget, String?) -> Unit,
 ) {
-    var domain by rememberSaveable { mutableStateOf("") }
-    var exact by rememberSaveable { mutableStateOf(false) }
-    var localDirect by rememberSaveable { mutableStateOf(true) }
-    var comment by rememberSaveable { mutableStateOf("") }
+    var domain by rememberSaveable(initial?.id) { mutableStateOf(initial?.domain.orEmpty()) }
+    var exact by rememberSaveable(initial?.id) { mutableStateOf(initial?.matchMode == DomainMatchMode.EXACT) }
+    var localDirect by rememberSaveable(initial?.id) {
+        mutableStateOf(initial?.routeTarget != DomainRouteTarget.DEFAULT_TUNNEL)
+    }
+    var comment by rememberSaveable(initial?.id) { mutableStateOf(initial?.comment.orEmpty()) }
     AlertDialog(
         onDismissRequest = onDismiss,
         confirmButton = {
-            TextButton(onClick = { onAdd(domain, if (exact) DomainMatchMode.EXACT else DomainMatchMode.SUFFIX, if (localDirect) DomainRouteTarget.LOCAL_DIRECT else DomainRouteTarget.DEFAULT_TUNNEL, comment) }) {
-                Text(stringResource(R.string.add))
+            TextButton(onClick = {
+                onAdd(
+                    domain,
+                    if (exact) DomainMatchMode.EXACT else DomainMatchMode.SUFFIX,
+                    if (localDirect) DomainRouteTarget.LOCAL_DIRECT else DomainRouteTarget.DEFAULT_TUNNEL,
+                    comment,
+                )
+            }) {
+                Text(stringResource(if (initial == null) R.string.add else R.string.domain_sites_update))
             }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
-        title = { Text(stringResource(R.string.domain_sites_add)) },
+        title = {
+            Text(stringResource(if (initial == null) R.string.domain_sites_add else R.string.domain_sites_edit))
+        },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(

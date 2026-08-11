@@ -1,5 +1,7 @@
 package com.zaneschepke.tunnel.state
 
+import java.text.DecimalFormat
+import java.text.DecimalFormatSymbols
 import java.util.Locale
 
 data class TunnelTrafficCounters(val receivedBytes: Long, val sentBytes: Long)
@@ -9,16 +11,34 @@ data class TunnelTrafficRate(
     val uploadBytesPerSecond: Long = 0L,
 ) {
     fun compactDisplay(): String =
-        "↓ ${formatBits(downloadBytesPerSecond)} · ↑ ${formatBits(uploadBytesPerSecond)}"
+        "↓${compactRate(downloadBytesPerSecond).display()} · ↑${compactRate(uploadBytesPerSecond).display()}"
 
-    private fun formatBits(bytesPerSecond: Long): String {
+    fun compactRate(bytesPerSecond: Long, locale: Locale = Locale.ROOT): CompactTrafficRate {
         val bits = bytesPerSecond.coerceAtLeast(0L).toDouble() * 8.0
         return when {
-            bits < 1_000.0 -> "${bits.toLong()} bit/s"
-            bits < 1_000_000.0 -> String.format(Locale.ROOT, "%.1f kbit/s", bits / 1_000.0)
-            else -> String.format(Locale.ROOT, "%.1f Mbit/s", bits / 1_000_000.0)
+            bits < 1_000.0 -> CompactTrafficRate(bits.toLong().toString(), TrafficRateUnit.BIT)
+            bits < 1_000_000.0 -> compact(bits / 1_000.0, TrafficRateUnit.KBIT, locale)
+            bits < 1_000_000_000.0 -> compact(bits / 1_000_000.0, TrafficRateUnit.MBIT, locale)
+            else -> compact(bits / 1_000_000_000.0, TrafficRateUnit.GBIT, locale)
         }
     }
+
+    private fun compact(value: Double, unit: TrafficRateUnit, locale: Locale): CompactTrafficRate =
+        CompactTrafficRate(
+            amount = DecimalFormat("0.#", DecimalFormatSymbols.getInstance(locale)).format(value),
+            unit = unit,
+        )
+}
+
+enum class TrafficRateUnit(val englishSuffix: String) {
+    BIT("bit/s"),
+    KBIT("kbit/s"),
+    MBIT("Mbit/s"),
+    GBIT("Gbit/s"),
+}
+
+data class CompactTrafficRate(val amount: String, val unit: TrafficRateUnit) {
+    fun display(): String = "$amount ${unit.englishSuffix}"
 }
 
 /** Converts cumulative interface counters into a low-overhead instantaneous rate. */

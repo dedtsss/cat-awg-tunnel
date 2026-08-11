@@ -29,10 +29,18 @@ No Android 12-or-older complement-CIDR workaround is implemented. The app still 
 
 ## UI, share, import/export
 
-Per-tunnel Settings → Sites supports search, add/delete/toggle, exact/suffix, local-direct/default-tunnel choice, IPv4/IPv6 inspection, last resolution metadata, manual refresh, and JSON/TXT import/export. Imports preserve logical/user metadata, assign the target tunnel, and regenerate network-dependent DNS observations.
+Per-tunnel Settings → Sites supports search, add/edit/delete/toggle, exact/suffix,
+local-direct/default-tunnel choice, IPv4/IPv6 inspection, last resolution metadata, manual refresh,
+and JSON/TXT import/export. Imports preserve logical/user metadata, assign the target tunnel, and
+regenerate network-dependent DNS observations.
 
 The manifest registers `ACTION_SEND` + `text/plain`. The activity safely extracts a URL/domain, asks for suffix or exact mode and a tunnel (preferring an active tunnel), then resolves and applies the rule through the same coordinator. Automated parser tests cover Chrome/Firefox-style text payloads; physical browser share UI was not run.
 
 ## Important limitation: IP is not a domain
 
-VPN routing is IP-based. A local reverse index maps observed IPs to all saved rules/domains, including historical and disabled rules. Sites diagnostics shows a shared-IP warning, direct/VPN decision, responsible rule, freshness, changed IPs, and IPv4/IPv6 differences. It only claims what was locally observed; no reverse-IP or passive-DNS data is uploaded or queried.
+VPN routing is IP-based. A local reverse index maps observed IPs to all saved rules/domains,
+including historical and disabled rules. Sites diagnostics shows a shared-IP warning, direct/VPN
+decision, the active IP-route owner (if a current direct exclusion exists), the separately matched
+hostname rule, all locally known domains for that IP, freshness, changed IPs, and IPv4/IPv6
+differences. It only claims what was locally observed; an unknown hostname sharing an IP is never
+claimed to belong to a saved domain, and no reverse-IP or passive-DNS data is uploaded or queried.

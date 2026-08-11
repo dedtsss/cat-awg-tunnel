@@ -168,6 +168,8 @@
     <string name="domain_sites_export_json">Export JSON</string>
     <string name="domain_sites_export_txt">Export TXT</string>
     <string name="domain_sites_diagnostics_title">Site diagnostics: %1$s</string>
+    <string name="domain_sites_edit">Edit rule</string>
+    <string name="domain_sites_update">Update</string>
     <string name="domain_sites_ipv4">IPv4: %1$s</string>
     <string name="domain_sites_ipv6">IPv6: %1$s</string>
     <string name="domain_sites_none">none</string>
@@ -303,6 +305,26 @@
     <string name="configurator_error_parse">Could not parse this profile locally.</string>
     <string name="configurator_default_candidate">Candidate</string>
     <string name="configurator_change_saved">candidate profile saved; no networking change was applied</string>
+    <string name="configurator_change_applied">configuration applied to the selected local tunnel after confirmation</string>
+    <string name="configurator_error_choose_baseline">Select a different saved profile as the comparison baseline.</string>
+    <string name="configurator_error_choose_tunnel">Select a local tunnel before applying this candidate.</string>
+    <string name="configurator_import">Import file</string>
+    <string name="configurator_export">Export file</string>
+    <string name="configurator_file_error">Could not read or write the configuration file.</string>
+    <string name="configurator_recommendations">Diagnostic recommendations</string>
+    <string name="configurator_evidence">Evidence: %1$s · confidence %2$d%%</string>
+    <string name="configurator_apply_to_tunnel">Apply to tunnel</string>
+    <string name="configurator_target_tunnel">Target tunnel</string>
+    <string name="configurator_apply_confirm_title">Apply configuration?</string>
+    <string name="configurator_apply_confirm_message">This replaces the selected local tunnel configuration. If it is active, it reconnects through the normal tunnel lifecycle. No server configuration is changed.</string>
+    <string name="configurator_apply_confirm">Apply</string>
+    <string name="configurator_select_baseline">Use as baseline</string>
+    <string name="configurator_experiment_history">Experiments (public data only)</string>
+    <string name="configurator_experiment_entry">%1$s · %2$s · %3$s</string>
+    <string name="configurator_parameter_effect_up">Increase: %1$s</string>
+    <string name="configurator_parameter_effect_down">Decrease: %1$s</string>
+    <string name="configurator_parameter_risks">Risks: %1$s</string>
+    <string name="configurator_parameter_recommended">Documented note: %1$s</string>
     <string name="configurator_error_secret">Secret-bearing fields cannot be saved as public candidate profiles.</string>
     <string name="configurator_error_validate_first">Validate the profile locally before sending a public copy to Cat Server.</string>
     <string name="configurator_error_pair_first">Pair a Cat Server before remote validation.</string>
@@ -673,6 +695,10 @@
     <string name="traffic_rate_bits">%1$d bit/s</string>
     <string name="traffic_rate_kbits">%1$.1f kbit/s</string>
     <string name="traffic_rate_mbits">%1$.1f Mbit/s</string>
+    <string name="traffic_rate_bits_unit">bit/s</string>
+    <string name="traffic_rate_kbits_unit">kbit/s</string>
+    <string name="traffic_rate_mbits_unit">Mbit/s</string>
+    <string name="traffic_rate_gbits_unit">Gbit/s</string>
     <string name="peer_template">peer: %1$s</string>
     <string name="handshake_template">handshake: %1$s</string>
 

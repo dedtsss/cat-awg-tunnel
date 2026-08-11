@@ -10,6 +10,7 @@ import com.zaneschepke.wireguardautotunnel.notification.NotificationService.Comp
 import com.zaneschepke.wireguardautotunnel.notification.NotificationService.Companion.TUNNEL_MESSAGES_NOTIFICATION_ID
 import com.zaneschepke.wireguardautotunnel.notification.NotificationService.Companion.VPN_GROUP_KEY
 import com.zaneschepke.wireguardautotunnel.notification.NotificationService.Companion.VPN_NOTIFICATION_ID
+import com.zaneschepke.wireguardautotunnel.util.extensions.asCompactNotificationString
 import com.zaneschepke.wireguardautotunnel.util.extensions.asLocalizedString
 
 class AndroidTunnelNotificationService(private val notificationService: NotificationService) :
@@ -38,7 +39,7 @@ class AndroidTunnelNotificationService(private val notificationService: Notifica
                 }
             }
 
-        val formattedLines =
+        val expandedLines =
             tunnelNotificationLines.values.map { line ->
                 val status = line.displayState.asLocalizedString(context)
                 val quality = line.connectionQuality.asLocalizedString(context)
@@ -57,7 +58,14 @@ class AndroidTunnelNotificationService(private val notificationService: Notifica
                     context.getString(R.string.notification_tunnel_status_format, line.name, summary)
                 }
             }
-        val description = formattedLines.joinToString("\n")
+        val description =
+            if (tunnelNotificationLines.size == 1) {
+                tunnelNotificationLines.values.first().let { line ->
+                    line.trafficRate.asCompactNotificationString(context, line.connectionQuality)
+                }
+            } else {
+                expandedLines.joinToString("\n")
+            }
 
         val actions =
             if (tunnelNotificationLines.size == 1) {
@@ -84,9 +92,11 @@ class AndroidTunnelNotificationService(private val notificationService: Notifica
                     .setSummaryText(
                         "${tunnelNotificationLines.size} ${context.getString(R.string.tunnels).lowercase()}"
                     )
-                    .also { inbox -> formattedLines.forEach { inbox.addLine(it) } }
+                        .also { inbox -> expandedLines.forEach { inbox.addLine(it) } }
             } else {
-                null
+                NotificationCompat.BigTextStyle()
+                    .setBigContentTitle(title)
+                    .bigText(expandedLines.first())
             }
 
         return notificationService.createNotification(

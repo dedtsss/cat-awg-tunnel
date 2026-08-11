@@ -34,7 +34,18 @@ class TunnelTelemetryTest {
             )
 
         assertEquals(TunnelConnectionQuality.STABLE, quality)
-        assertTrue(TunnelTrafficRate().compactDisplay().contains("↓ 0 bit/s"))
+        assertTrue(TunnelTrafficRate().compactDisplay().contains("↓0 bit/s"))
+    }
+
+    @Test
+    fun `compact rates retain both directions and scale through gigabits`() {
+        val traffic =
+            TunnelTrafficRate(
+                downloadBytesPerSecond = 5_887_500,
+                uploadBytesPerSecond = 250_000_000,
+            )
+
+        assertEquals("↓47.1 Mbit/s · ↑2 Gbit/s", traffic.compactDisplay())
     }
 
     @Test

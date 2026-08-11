@@ -1,6 +1,8 @@
 # Third-party research and licensing
 
-Research was performed on 2026-08-08 with GitHub repository metadata and current default heads. These are behavioral/architecture references only unless explicitly stated otherwise. No donor source was copied into this MIT-derived fork.
+Research was refreshed on 2026-08-11 with GitHub repository metadata and current default heads. These
+are behavioral/architecture references only unless explicitly stated otherwise. No donor source was
+copied into this MIT-derived fork.
 
 | Repository | Observed license / head | Decision |
 | --- | --- | --- |
@@ -23,4 +25,10 @@ APK: the shipped flow is a guided, operator-controlled server installer fallback
 HTTPS pairing. This keeps host-key verification, remote privilege boundaries and firewall changes
 out of the Android product until a dedicated maintained transport and UX are reviewed.
 
-Repositories with no declared/other/GPL/AGPL license from the search results were excluded as implementation donors. The Cat configurator contains independently written deterministic validation based on the existing upstream editor behavior and documented capability gating. It does not add unrelated network-evasion functionality.
+Repositories with no declared/other/GPL/AGPL license from the search results were excluded as
+implementation donors. The Cat configurator contains independently written deterministic validation
+based on the existing upstream editor behavior and documented capability gating. In particular,
+AmneziaWG's public configuration documentation treats unset masking parameters as zero/default,
+documents `Jc` 4–12 only as an orientation, and describes `H1`–`H4` as uint32 values or ranges;
+the validator therefore does not impose the former arbitrary 1–4 header limit. It does not add
+unrelated network-evasion functionality.

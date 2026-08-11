@@ -32,6 +32,7 @@ data class AwgConfigDocument(
 enum class ValidationLevel {
     ERROR,
     WARNING,
+    INFO,
 }
 
 @Serializable
@@ -46,6 +47,36 @@ data class ValidationIssue(
 data class ValidationResult(val issues: List<ValidationIssue> = emptyList()) {
     val isValid: Boolean
         get() = issues.none { it.level == ValidationLevel.ERROR }
+}
+
+/**
+ * Protocol boundary for the in-app configurator. AWG3 deliberately has no implementation until the
+ * bundled backend and the paired server advertise it; callers can therefore select a configurator
+ * without treating a future protocol as supported today.
+ */
+interface ProtocolConfigurator {
+    val protocol: ConfigProtocol
+
+    fun parse(raw: String): AwgConfigDocument
+
+    fun validate(
+        document: AwgConfigDocument,
+        capabilities: AwgCapabilities = AwgCapabilities(),
+    ): ValidationResult
+}
+
+class Awg2ProtocolConfigurator(
+    private val parser: AwgConfigParser = AwgConfigParser(),
+    private val validator: AwgConfigValidator = AwgConfigValidator(parser),
+) : ProtocolConfigurator {
+    override val protocol: ConfigProtocol = ConfigProtocol.AWG2
+
+    override fun parse(raw: String): AwgConfigDocument = parser.parse(raw)
+
+    override fun validate(
+        document: AwgConfigDocument,
+        capabilities: AwgCapabilities,
+    ): ValidationResult = validator.validate(document, protocol, capabilities)
 }
 
 /** Versioned schema metadata for clients that want to build a UI without inventing parameters. */
@@ -196,67 +227,67 @@ object AwgParameterMetadataCatalog {
                 "Jc",
                 "Junk packet count",
                 "AWG2 obfuscation packet count.",
-                "1..128",
+                "0..65535",
             ),
             AwgParameterMetadata(
                 "Jmin",
                 "Junk minimum",
                 "Minimum AWG2 junk packet size.",
-                "1..1279",
+                "0..65535",
             ),
             AwgParameterMetadata(
                 "Jmax",
                 "Junk maximum",
                 "Maximum AWG2 junk packet size; must be at least Jmin.",
-                "2..1280",
+                "0..65535; Jmin ≤ Jmax when Jc is enabled",
             ),
             AwgParameterMetadata(
                 "S1",
                 "Init padding",
                 "AWG2 handshake padding parameter.",
-                "0..64",
+                "0..65535",
             ),
             AwgParameterMetadata(
                 "S2",
                 "Response padding",
                 "AWG2 response padding parameter.",
-                "0..64",
+                "0..65535",
             ),
             AwgParameterMetadata(
                 "S3",
                 "Cookie padding",
                 "AWG2 cookie padding parameter.",
-                "0..928",
+                "0..65535",
             ),
             AwgParameterMetadata(
                 "S4",
                 "Transport padding",
                 "AWG2 transport padding parameter.",
-                "0..928",
+                "0..65535",
             ),
             AwgParameterMetadata(
                 "H1",
                 "Handshake header 1",
-                "AWG2 handshake header selector.",
-                "1..4",
+                "AWG2 uint32 header value or inclusive uint32 range.",
+                "0..4294967295 or start-end",
             ),
             AwgParameterMetadata(
                 "H2",
                 "Handshake header 2",
-                "AWG2 handshake header selector.",
-                "1..4",
+                "AWG2 uint32 header value or inclusive uint32 range.",
+                "0..4294967295 or start-end",
             ),
             AwgParameterMetadata(
                 "H3",
                 "Handshake header 3",
-                "AWG2 handshake header selector.",
-                "1..4",
+                "AWG2 uint32 header value or inclusive uint32 range.",
+                "0..4294967295 or start-end",
             ),
             AwgParameterMetadata(
                 "H4",
                 "Handshake header 4",
-                "AWG2 handshake header selector.",
-                "1..4",
+                "AWG2 uint32 header value or inclusive uint32 range.",
+                "0..4294967295 or start-end",
             ),
         )
 

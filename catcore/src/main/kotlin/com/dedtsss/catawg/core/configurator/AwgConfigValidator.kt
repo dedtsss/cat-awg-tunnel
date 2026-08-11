@@ -37,6 +37,30 @@ class AwgConfigValidator(
         fun warning(code: String, message: String, field: String) {
             issues += ValidationIssue(code, message, field, ValidationLevel.WARNING)
         }
+        fun info(code: String, message: String, field: String) {
+            issues += ValidationIssue(code, message, field, ValidationLevel.INFO)
+        }
+
+        interfaceValues.keys
+            .filterNot { it in AwgConfigSchema.interfaceFields }
+            .forEach { key ->
+                warning(
+                    "UNSUPPORTED_PARAMETER",
+                    "$key is retained in the pasted document but is not supported by this AWG2 editor.",
+                    "Interface.$key",
+                )
+            }
+        document.peers.forEachIndexed { index, peer ->
+            peer.keys
+                .filterNot { it in AwgConfigSchema.peerFields }
+                .forEach { key ->
+                    warning(
+                        "UNSUPPORTED_PARAMETER",
+                        "$key is retained in the pasted document but is not supported by this AWG2 editor.",
+                        "Peer[$index].$key",
+                    )
+                }
+        }
 
         if (interfaceValues["PrivateKey"].isNullOrBlank())
             error("PRIVATE_KEY_REQUIRED", "PrivateKey is required.", "PrivateKey")
@@ -46,6 +70,15 @@ class AwgConfigValidator(
         validateDns(interfaceValues["DNS"], ::error)
         validateUnsigned(interfaceValues["ListenPort"], "ListenPort", 1, 65535, ::error)
         validateUnsigned(interfaceValues["MTU"], "MTU", 1, 65535, ::error)
+        interfaceValues["MTU"]?.toLongOrNull()?.let { mtu ->
+            if (mtu in 1 until 576 || mtu > 9_000) {
+                warning(
+                    "UNUSUAL_MTU",
+                    "MTU is outside the usual Internet range; verify it against the actual path rather than changing it automatically.",
+                    "MTU",
+                )
+            }
+        }
 
         if (document.peers.isEmpty())
             error("PEER_REQUIRED", "At least one [Peer] is required.", "Peer")
@@ -90,7 +123,15 @@ class AwgConfigValidator(
         if (hasAwgValues && protocol == ConfigProtocol.WIREGUARD) {
             error("AWG_FIELDS_IN_WG", "AWG parameters require an AWG2 profile.", "Interface")
         }
-        if (hasAwgValues) validateAwg2(interfaceValues, ::error, ::warning)
+        if (hasAwgValues) {
+            validateAwg2(interfaceValues, ::error, ::warning)
+        } else if (protocol == ConfigProtocol.AWG2) {
+            info(
+                "AWG_DEFAULTS",
+                "No AWG2 masking fields were supplied. The backend's documented zero/default semantics apply.",
+                "Interface",
+            )
+        }
         return ValidationResult(issues.distinctBy { listOf(it.code, it.field, it.message) })
     }
 
@@ -99,19 +140,30 @@ class AwgConfigValidator(
         error: (String, String, String) -> Unit,
         warning: (String, String, String) -> Unit,
     ) {
-        validateUnsigned(values["Jc"], "Jc", 1, 128, error)
-        validateUnsigned(values["Jmin"], "Jmin", 1, 1279, error)
-        validateUnsigned(values["Jmax"], "Jmax", 2, 1280, error)
-        validateUnsigned(values["S1"], "S1", 0, 64, error)
-        validateUnsigned(values["S2"], "S2", 0, 64, error)
-        validateUnsigned(values["S3"], "S3", 0, 928, error)
-        validateUnsigned(values["S4"], "S4", 0, 928, error)
+        // AWG documents zero/default values as meaningful: an omitted parameter is treated as
+        // zero.  Do not turn a valid but uncommon profile into an error by inventing a tuning
+        // range.  These are type limits only; actual backend capability remains separately gated.
+        validateUnsigned(values["Jc"], "Jc", 0, 65_535, error)
+        validateUnsigned(values["Jmin"], "Jmin", 0, 65_535, error)
+        validateUnsigned(values["Jmax"], "Jmax", 0, 65_535, error)
+        validateUnsigned(values["S1"], "S1", 0, 65_535, error)
+        validateUnsigned(values["S2"], "S2", 0, 65_535, error)
+        validateUnsigned(values["S3"], "S3", 0, 65_535, error)
+        validateUnsigned(values["S4"], "S4", 0, 65_535, error)
         listOf("H1", "H2", "H3", "H4").forEach { key ->
-            validateUnsigned(values[key], key, 1, 4, error)
+            validateHeaderRange(values[key], key, error)
         }
         val jMin = values["Jmin"]?.toLongOrNull()
         val jMax = values["Jmax"]?.toLongOrNull()
-        if (jMin != null && jMax != null && jMin > jMax) {
+        val jCount = values["Jc"]?.toLongOrNull() ?: 0L
+        if (jCount > 0 && (jMin == null || jMax == null)) {
+            warning(
+                "AWG_JUNK_BOUNDS_DEFAULT",
+                "Jc is enabled while Jmin or Jmax relies on the backend default; verify the peer's expected behaviour.",
+                "Jc",
+            )
+        }
+        if (jCount > 0 && jMin != null && jMax != null && jMin > jMax) {
             error("AWG_JUNK_RANGE", "Jmin must not exceed Jmax.", "Jmin")
         }
         val hasMimic = (1..5).any { !values["I$it"].isNullOrBlank() }
@@ -126,6 +178,31 @@ class AwgConfigValidator(
                 "Mimic packets are present but base AWG2 parameters are incomplete; upstream compatibility normalization may fill defaults.",
                 "I1",
             )
+        }
+    }
+
+    private fun validateHeaderRange(
+        raw: String?,
+        field: String,
+        error: (String, String, String) -> Unit,
+    ) {
+        if (raw.isNullOrBlank()) return
+        val bounds = raw.split('-').map(String::trim)
+        if (bounds.size !in 1..2) {
+            error(
+                "INVALID_HEADER_RANGE",
+                "$field must be a uint32 value or start-end range.",
+                field,
+            )
+            return
+        }
+        val values = bounds.map { it.toLongOrNull() }
+        if (values.any { value -> value == null || value < 0L || value > 4_294_967_295L }) {
+            error("INVALID_HEADER_RANGE", "$field must use uint32 values or a uint32 range.", field)
+            return
+        }
+        if (values.size == 2 && values[0]!! > values[1]!!) {
+            error("INVALID_HEADER_RANGE", "$field range start must not exceed its end.", field)
         }
     }
 

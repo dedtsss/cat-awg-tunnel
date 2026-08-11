@@ -1,7 +1,7 @@
 object Constants {
-    const val VERSION_NAME = "5.2.2"
+    const val VERSION_NAME = "5.2.3"
     // 5.2.1 test-channel artifacts reached 50250. Keep local/offline artifacts newer as well.
-    const val VERSION_CODE = 50252
+    const val VERSION_CODE = 50253
     const val TARGET_SDK = 37
     const val MIN_SDK = 26
 

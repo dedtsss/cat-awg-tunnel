@@ -288,8 +288,14 @@ object DomainRouteRebuildDecision {
 data class DiagnosedAddress(
     val address: String,
     val route: DomainRouteTarget,
+    /** Rule whose current resolved IP makes this address use the route, if known. */
     val ruleId: String? = null,
     val ruleDomain: String? = null,
+    /** A hostname rule may be different from the IP route owner because Android routes by IP. */
+    val hostnameRuleId: String? = null,
+    val hostnameRuleDomain: String? = null,
+    /** Locally saved domains that have observed this IP; this is not reverse-IP attribution. */
+    val knownByDomains: List<String> = emptyList(),
     val sharedWithDomains: List<String> = emptyList(),
 )
 
@@ -302,7 +308,8 @@ data class DomainDiagnosis(
     val resolutionStatus: DomainResolutionStatus? = null,
     val stale: Boolean,
     val changedIp: Boolean,
-    val evidenceNote: String = "Route decisions are based only on locally observed DNS answers.",
+    val evidenceNote: String =
+        "Android applies direct routing by resolved IP. Shared-IP links are only locally observed saved rules, not proof that an unknown site belongs to a domain.",
 )
 
 object DomainDiagnostics {
@@ -315,12 +322,14 @@ object DomainDiagnostics {
     ): DomainDiagnosis? {
         val domain = DomainNormalizer.fromSharedText(input) ?: return null
         val ruleList = rules.toList()
-        val rule = DomainRuleMatcher.effectiveRule(ruleList, domain)
-        val related = rule?.let { listOf(it) }.orEmpty()
+        val hostnameRule = DomainRuleMatcher.effectiveRule(ruleList, domain)
+        val related = hostnameRule?.let { listOf(it) }.orEmpty()
         val conflicts = SharedIpIndex.conflicts(ruleList).associateBy { it.address }
         val useCurrent = currentResolution?.takeIf { it.domain == domain }
-        val cachedIpv4 = rule?.resolvedIpv4.orEmpty().filter { it.isCurrent }.map { it.address }
-        val cachedIpv6 = rule?.resolvedIpv6.orEmpty().filter { it.isCurrent }.map { it.address }
+        val cachedIpv4 =
+            hostnameRule?.resolvedIpv4.orEmpty().filter { it.isCurrent }.map { it.address }
+        val cachedIpv6 =
+            hostnameRule?.resolvedIpv6.orEmpty().filter { it.isCurrent }.map { it.address }
         val ipv4 =
             if (useCurrent?.status == DomainResolutionStatus.SUCCESS) useCurrent.ipv4
             else cachedIpv4
@@ -329,14 +338,37 @@ object DomainDiagnostics {
             else cachedIpv6
         fun describe(entries: List<String>): List<DiagnosedAddress> =
             entries.distinct().map { address ->
-                val target = rule?.routeTarget ?: DomainRouteTarget.DEFAULT_TUNNEL
+                val knownRules = ruleList.filter { candidate ->
+                    (candidate.resolvedIpv4 + candidate.resolvedIpv6).any { it.address == address }
+                }
+                // A current LOCAL_DIRECT answer is what VpnService.Builder.excludeRoute() has
+                // actually installed. It takes precedence over a hostname rule because Android
+                // cannot route by hostname after DNS has resolved it.
+                val ipRouteOwner =
+                    knownRules
+                        .asSequence()
+                        .filter { candidate ->
+                            candidate.enabled &&
+                                candidate.routeTarget == DomainRouteTarget.LOCAL_DIRECT &&
+                                (candidate.resolvedIpv4 + candidate.resolvedIpv6).any {
+                                    it.address == address && it.isCurrent
+                                }
+                        }
+                        .sortedBy { it.domain }
+                        .firstOrNull()
+                val routeOwner = ipRouteOwner ?: hostnameRule
+                val target = routeOwner?.routeTarget ?: DomainRouteTarget.DEFAULT_TUNNEL
+                val knownDomains = knownRules.map { it.domain }.distinct().sorted()
                 DiagnosedAddress(
                     address = address,
                     route = target,
-                    ruleId = rule?.id,
-                    ruleDomain = rule?.domain,
+                    ruleId = routeOwner?.id,
+                    ruleDomain = routeOwner?.domain,
+                    hostnameRuleId = hostnameRule?.id,
+                    hostnameRuleDomain = hostnameRule?.domain,
+                    knownByDomains = knownDomains,
                     sharedWithDomains =
-                        conflicts[address]?.domains.orEmpty().filter { it != rule?.domain },
+                        conflicts[address]?.domains.orEmpty().filter { it != routeOwner?.domain },
                 )
             }
         val last =
@@ -362,7 +394,7 @@ object DomainDiagnostics {
             ipv4 = describe(ipv4),
             ipv6 = describe(ipv6),
             lastResolvedAt = last,
-            resolutionStatus = useCurrent?.status ?: rule?.lastResolveStatus,
+            resolutionStatus = useCurrent?.status ?: hostnameRule?.lastResolveStatus,
             stale = stale,
             changedIp = changed,
         )

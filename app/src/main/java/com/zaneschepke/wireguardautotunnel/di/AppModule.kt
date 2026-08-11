@@ -87,7 +87,7 @@ val appModule = module {
         ClientDiagnosticsViewModel(get(), get(), get(), get(), get(), androidContext())
     }
     viewModelOf(::CatServerViewModel)
-    viewModel { ConfiguratorViewModel(get(), get(), get(), get(), androidContext()) }
+    viewModel { ConfiguratorViewModel(get(), get(), get(), get(), get(), get(), get(), androidContext()) }
     viewModel { (id: Int?) -> ConfigEditViewModel(get(), get(), get(), get(), get(), id) }
     viewModelOf(::DnsViewModel)
     viewModel { (id: Int) -> DomainSitesViewModel(get(), get(), get(), androidContext(), id) }

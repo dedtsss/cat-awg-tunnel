@@ -1,5 +1,7 @@
 package com.dedtsss.catawg.core.configurator
 
+import com.dedtsss.catawg.core.diagnostics.DiagnosticCategory
+import com.dedtsss.catawg.core.diagnostics.DiagnosticEvent
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -62,6 +64,38 @@ class AwgConfiguratorTest {
     }
 
     @Test
+    fun `AWG header accepts documented uint32 ranges and warns instead of rejecting unusual values`() {
+        val withHeaderRange = validAwg2.replace("H1 = 1", "H1 = 100-100000")
+        val result = AwgConfigValidator().validate(withHeaderRange, ConfigProtocol.AWG2)
+
+        assertTrue("issues=${result.issues}", result.isValid)
+        assertFalse(result.issues.any { it.code == "INVALID_HEADER_RANGE" })
+
+        val unsupported =
+            AwgConfigValidator()
+                .validate(
+                    validAwg2.replace("MTU = 1280", "MTU = 256\nCustomVendorOption = retain-me"),
+                    ConfigProtocol.AWG2,
+                )
+        assertTrue(unsupported.isValid)
+        assertTrue(
+            unsupported.issues.any {
+                it.code == "UNSUPPORTED_PARAMETER" && it.level == ValidationLevel.WARNING
+            }
+        )
+    }
+
+    @Test
+    fun `parser rejects ambiguous duplicate and missing interface sections`() {
+        val parser = AwgConfigParser()
+
+        assertTrue(runCatching { parser.parse("[Peer]\nPublicKey = key") }.isFailure)
+        assertTrue(
+            runCatching { parser.parse(validAwg2.replace("Jc = 4", "Jc = 4\nJc = 5")) }.isFailure
+        )
+    }
+
+    @Test
     fun `candidate generation does not apply and public profile omits all secret values`() {
         val document = AwgConfigParser().parse(validAwg2)
         val candidate = AwgConfigGenerator().candidate("Candidate", ConfigProtocol.AWG2, document)
@@ -101,5 +135,55 @@ class AwgConfiguratorTest {
 
         assertEquals(profile, repository.get(profile.id))
         assertEquals(-2, repository.changes(profile.id).single().result?.reconnectDelta)
+    }
+
+    @Test
+    fun `deterministic advisor produces candidate only transport advice and public fingerprint excludes keys`() {
+        val profile =
+            AwgConfigGenerator()
+                .candidate("Candidate", ConfigProtocol.AWG2, AwgConfigParser().parse(validAwg2))
+                .toPublic()
+        val changedPrivate =
+            AwgConfigGenerator()
+                .candidate(
+                    "Candidate",
+                    ConfigProtocol.AWG2,
+                    AwgConfigParser()
+                        .parse(validAwg2.replace("client-private-key", "different-private-key")),
+                )
+                .toPublic()
+        val advice =
+            DeterministicConfigurationAdvisor()
+                .recommend(
+                    ConfigurationAdvisorContext(
+                        profile = profile,
+                        diagnostics =
+                            listOf(
+                                DiagnosticEvent(
+                                    category = DiagnosticCategory.NETWORK,
+                                    code = "NETWORK_AVAILABLE",
+                                    summary = "available",
+                                ),
+                                DiagnosticEvent(
+                                    category = DiagnosticCategory.TUNNEL,
+                                    code = "TUNNEL_BOUNCE_FAILED",
+                                    summary = "failed",
+                                ),
+                                DiagnosticEvent(
+                                    category = DiagnosticCategory.TUNNEL,
+                                    code = "TUNNEL_RECONNECT_FAILED",
+                                    summary = "failed",
+                                ),
+                            ),
+                    )
+                )
+
+        assertTrue(advice.any { it.configurationArea == "endpoint / AWG2 masking" })
+        assertTrue(advice.all { it.requiresUserConfirmation })
+        assertEquals(
+            ConfigurationFingerprint.of(profile),
+            ConfigurationFingerprint.of(changedPrivate),
+        )
+        assertTrue(ConfigurationFingerprint.changedParameters(profile, changedPrivate).isEmpty())
     }
 }

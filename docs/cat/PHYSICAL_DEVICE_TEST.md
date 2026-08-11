@@ -16,10 +16,17 @@ SHA shown under Settings → About.
    state. Fetch server incidents and a combined 15-minute/1-hour bundle.
 7. Ask the AI Assistant only when the server advertises `aiGateway`; verify candidate-only wording
    and that no setting is applied. Disable the capability and verify deterministic diagnostics remain.
-8. Import a profile in AWG Configurator, validate, save a named candidate, compare two public profiles,
-   remote-validate a redacted profile, and inspect before/after metrics. Confirm a profile with
-   PrivateKey/PresharedKey cannot be sent as a public request.
-9. Test offline/server-down behavior: local history/export still works, retries remain bounded, and
+8. Import and export an AWG2 profile in AWG Configurator, validate it, save a named candidate,
+   compare two explicitly selected public profiles, read a parameter explanation, and confirm that
+   deterministic diagnostic recommendations never apply a setting. Apply the candidate to one
+   selected tunnel only after the confirmation dialog; if active, verify the normal reconnect.
+   Inspect the public-only experiment history and before/after metrics. Confirm a profile with
+   PrivateKey/PresharedKey cannot be sent as a public request or stored in history.
+9. With the tunnel connected, verify one collapsed foreground notification shows a health symbol and
+   both RX/TX speeds without the words “Connected” or “Stable”; expand it to see status/health.
+   Add a suffix and an exact domain rule, refresh A/AAAA, use browser Share → Cat AWG Tunnel, and
+   check a direct-rule site plus domain diagnostics/shared-IP wording.
+10. Test offline/server-down behavior: local history/export still works, retries remain bounded, and
    the UI gives an actionable error.
 
 Physical VPN handshakes, browser traffic and real VPS firewall behavior must be marked **not run**

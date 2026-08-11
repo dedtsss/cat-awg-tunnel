@@ -142,6 +142,36 @@ class DomainRoutingTest {
     }
 
     @Test
+    fun `unknown hostname sharing an active exclusion reports IP route owner without inferring ownership`() {
+        val bypass =
+            rule(id = "bypass", domain = "allowed.example", ipv4 = listOf(ip("203.0.113.44")))
+        val knownOther =
+            rule(
+                id = "other",
+                domain = "cdn.example",
+                enabled = false,
+                ipv4 = listOf(ip("203.0.113.44")),
+            )
+
+        val diagnosis =
+            requireNotNull(
+                DomainDiagnostics.explain(
+                    input = "unknown.example",
+                    rules = listOf(bypass, knownOther),
+                    currentResolution =
+                        DomainResolution("unknown.example", ipv4 = listOf("203.0.113.44")),
+                )
+            )
+        val address = diagnosis.ipv4.single()
+
+        assertEquals(DomainRouteTarget.LOCAL_DIRECT, address.route)
+        assertEquals("allowed.example", address.ruleDomain)
+        assertEquals(listOf("allowed.example", "cdn.example"), address.knownByDomains)
+        assertNull(address.hostnameRuleDomain)
+        assertTrue(diagnosis.evidenceNote.contains("not proof"))
+    }
+
+    @Test
     fun `JSON and TXT imports preserve logical rule metadata`() {
         val original = rule(id = "portable", domain = "пример.рф", ipv4 = listOf(ip("192.0.2.4")))
         val json = DomainRuleCodec.toJson(listOf(original))

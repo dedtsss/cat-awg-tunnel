@@ -10,12 +10,20 @@ class AwgConfigParser {
         val peers = mutableListOf<MutableMap<String, String>>()
         var section: String? = null
         var currentPeer: MutableMap<String, String>? = null
+        var hasInterface = false
 
         raw.lineSequence().forEachIndexed { index, originalLine ->
             val line = originalLine.substringBefore('#').substringBefore(';').trim()
             if (line.isBlank()) return@forEachIndexed
             if (line.startsWith("[") && line.endsWith("]")) {
                 section = line.substring(1, line.length - 1).trim().lowercase()
+                if (section == "interface" && hasInterface) {
+                    throw AwgConfigParseException(
+                        index + 1,
+                        "Only one [Interface] section is allowed.",
+                    )
+                }
+                if (section == "interface") hasInterface = true
                 currentPeer =
                     if (section == "peer") linkedMapOf<String, String>().also { peers += it }
                     else null
@@ -40,10 +48,25 @@ class AwgConfigParser {
                 )
             }
             when (section) {
-                "interface" -> interfaceValues[key] = value
-                "peer" -> currentPeer?.set(key, value)
+                "interface" -> {
+                    if (key in interfaceValues) {
+                        throw AwgConfigParseException(
+                            index + 1,
+                            "Duplicate Interface parameter $key.",
+                        )
+                    }
+                    interfaceValues[key] = value
+                }
+                "peer" -> {
+                    val peer = requireNotNull(currentPeer)
+                    if (key in peer) {
+                        throw AwgConfigParseException(index + 1, "Duplicate Peer parameter $key.")
+                    }
+                    peer[key] = value
+                }
             }
         }
+        if (!hasInterface) throw AwgConfigParseException(1, "Missing [Interface] section.")
         return AwgConfigDocument(interfaceValues = interfaceValues, peers = peers)
     }
 

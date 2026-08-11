@@ -153,6 +153,8 @@
     <string name="domain_sites_export_json">Экспорт JSON</string>
     <string name="domain_sites_export_txt">Экспорт TXT</string>
     <string name="domain_sites_diagnostics_title">Диагностика сайта: %1$s</string>
+    <string name="domain_sites_edit">Изменить правило</string>
+    <string name="domain_sites_update">Обновить</string>
     <string name="domain_sites_ipv4">IPv4: %1$s</string>
     <string name="domain_sites_ipv6">IPv6: %1$s</string>
     <string name="domain_sites_none">нет</string>
@@ -288,6 +290,26 @@
     <string name="configurator_error_parse">Не удалось локально разобрать этот профиль.</string>
     <string name="configurator_default_candidate">Профиль-кандидат</string>
     <string name="configurator_change_saved">профиль-кандидат сохранён; сетевые изменения не применялись</string>
+    <string name="configurator_change_applied">конфигурация применена к выбранному локальному туннелю после подтверждения</string>
+    <string name="configurator_error_choose_baseline">Выберите другой сохранённый профиль как базу для сравнения.</string>
+    <string name="configurator_error_choose_tunnel">Перед применением профиля выберите локальный туннель.</string>
+    <string name="configurator_import">Импортировать файл</string>
+    <string name="configurator_export">Экспортировать файл</string>
+    <string name="configurator_file_error">Не удалось прочитать или записать файл конфигурации.</string>
+    <string name="configurator_recommendations">Рекомендации диагностики</string>
+    <string name="configurator_evidence">Признаки: %1$s · достоверность %2$d%%</string>
+    <string name="configurator_apply_to_tunnel">Применить к туннелю</string>
+    <string name="configurator_target_tunnel">Целевой туннель</string>
+    <string name="configurator_apply_confirm_title">Применить конфигурацию?</string>
+    <string name="configurator_apply_confirm_message">Это заменит конфигурацию выбранного локального туннеля. Если он активен, произойдёт переподключение обычным жизненным циклом туннеля. Конфигурация сервера не меняется.</string>
+    <string name="configurator_apply_confirm">Применить</string>
+    <string name="configurator_select_baseline">Выбрать базой</string>
+    <string name="configurator_experiment_history">Эксперименты (только публичные данные)</string>
+    <string name="configurator_experiment_entry">%1$s · %2$s · %3$s</string>
+    <string name="configurator_parameter_effect_up">Увеличение: %1$s</string>
+    <string name="configurator_parameter_effect_down">Уменьшение: %1$s</string>
+    <string name="configurator_parameter_risks">Риски: %1$s</string>
+    <string name="configurator_parameter_recommended">Документированная заметка: %1$s</string>
     <string name="default_dns_desc">Обычный DNS через туннель с использованием DNS-серверов туннеля</string>
     <string name="encrypted_dns">Шифрованный DNS</string>
     <string name="encrypted_dns_desc">Шифрованный DNS через туннель с использованием собственного сервера</string>
@@ -614,6 +636,10 @@
     <string name="traffic_rate_bits">%1$d бит/с</string>
     <string name="traffic_rate_kbits">%1$.1f кбит/с</string>
     <string name="traffic_rate_mbits">%1$.1f Мбит/с</string>
+    <string name="traffic_rate_bits_unit">бит/с</string>
+    <string name="traffic_rate_kbits_unit">кбит/с</string>
+    <string name="traffic_rate_mbits_unit">Мбит/с</string>
+    <string name="traffic_rate_gbits_unit">Гбит/с</string>
     <string name="peer_template">узел: %1$s</string>
     <string name="handshake_template">подключение: %1$s</string>
     <!-- Notification formatting -->

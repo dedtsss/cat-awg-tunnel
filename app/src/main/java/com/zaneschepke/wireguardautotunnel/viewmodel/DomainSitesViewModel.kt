@@ -53,6 +53,23 @@ class DomainSitesViewModel(
 
     fun toggle(rule: DomainRule) = runAction { coordinator.updateAndApply(rule.copy(enabled = !rule.enabled)) }
 
+    fun update(
+        rule: DomainRule,
+        domain: String,
+        matchMode: DomainMatchMode,
+        routeTarget: DomainRouteTarget,
+        comment: String?,
+    ) = runAction {
+        coordinator.updateAndApply(
+            rule.copy(
+                domain = domain,
+                matchMode = matchMode,
+                routeTarget = routeTarget,
+                comment = comment?.takeIf { it.isNotBlank() },
+            )
+        )
+    }
+
     fun delete(rule: DomainRule) = runAction { coordinator.deleteAndApply(rule) }
 
     fun refresh() = runAction { coordinator.refreshAndRebuild(tunnelId, "manual_refresh") }
