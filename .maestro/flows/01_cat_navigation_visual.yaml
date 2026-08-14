@@ -13,7 +13,8 @@ tags:
 - scrollUntilVisible:
     element: "Cat Server"
     direction: DOWN
-- assertVisible: "Client diagnostics"
+- assertVisible: "Cat Server"
+- assertVisible: "AWG Configurator"
 - assertVisible: "Cat Server"
 - assertVisible: "AWG Configurator"
 - takeScreenshot: cat-01-settings
@@ -28,6 +29,9 @@ tags:
 - assertVisible: "AWG3 unavailable"
 - takeScreenshot: cat-03-configurator-start
 - pressKey: Back
+- scrollUntilVisible:
+    element: "Client diagnostics"
+    direction: UP
 - tapOn: "Client diagnostics"
 - assertVisible: "Diagnostics"
 - assertVisible: "Cat Server not connected; using standalone diagnostics."
