@@ -7,7 +7,8 @@ tags:
 ---
 - launchApp:
     clearState: true
-- tapOn: "Settings"
+- tapOn:
+    point: "63%, 95%"
 - assertVisible: "Client diagnostics"
 - assertVisible: "Cat Server"
 - assertVisible: "AWG Configurator"
@@ -29,7 +30,8 @@ tags:
 - takeScreenshot: cat-04-diagnostics-offline
 - pressKey: Back
 - assertVisible: "Cat Server"
-- tapOn: "Support"
+- tapOn:
+    point: "88%, 95%"
 - assertVisible: "Cat AWG Tunnel"
 - assertVisible: "git SHA:"
 - takeScreenshot: cat-12-support-provenance

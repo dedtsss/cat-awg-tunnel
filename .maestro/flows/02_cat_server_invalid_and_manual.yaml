@@ -8,7 +8,8 @@ tags:
 ---
 - launchApp:
     clearState: true
-- tapOn: "Settings"
+- tapOn:
+    point: "63%, 95%"
 - tapOn: "Cat Server"
 - assertVisible: "Connect Cat Server"
 - tapOn: "Pairing payload"

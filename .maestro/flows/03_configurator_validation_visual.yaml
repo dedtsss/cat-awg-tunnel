@@ -8,7 +8,8 @@ tags:
 ---
 - launchApp:
     clearState: true
-- tapOn: "Settings"
+- tapOn:
+    point: "63%, 95%"
 - tapOn: "AWG Configurator"
 - assertVisible: "AWG Configurator v1"
 - tapOn: "Candidate name"
