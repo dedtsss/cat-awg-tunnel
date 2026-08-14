@@ -22,6 +22,9 @@ tags:
 - inputText: "[Interface]\nAddress = not-a-cidr"
 - takeScreenshot: cat-08-configurator-keyboard
 - pressKey: Back
+- scrollUntilVisible:
+    element: "Validate locally"
+    direction: DOWN
 - tapOn: "Validate locally"
 - assertVisible: "Local validation: needs changes"
 - takeScreenshot: cat-09-configurator-invalid
@@ -29,6 +32,9 @@ tags:
 - eraseText: 1000
 - inputText: "[Interface]\nPrivateKey = client-private-key\nAddress = 10.7.0.2/32\nDNS = 1.1.1.1\n\n[Peer]\nPublicKey = server-public-key\nAllowedIPs = 0.0.0.0/0\nEndpoint = vpn.example.com:51820\nPersistentKeepalive = 25"
 - pressKey: Back
+- scrollUntilVisible:
+    element: "Validate locally"
+    direction: DOWN
 - tapOn: "Validate locally"
 - assertVisible: "Local validation: valid"
 - takeScreenshot: cat-10-configurator-valid

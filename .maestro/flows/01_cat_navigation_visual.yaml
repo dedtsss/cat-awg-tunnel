@@ -33,7 +33,7 @@ tags:
     direction: UP
 - tapOn: "Client diagnostics"
 - assertVisible: "Diagnostics"
-- assertVisible: "Cat Server not connected; using standalone diagnostics."
+- assertVisible: "No Cat Server paired; standalone diagnostics mode is active."
 - takeScreenshot: cat-04-diagnostics-offline
 - pressKey: Back
 - assertVisible: "Cat Server"

@@ -19,7 +19,7 @@ tags:
 - inputText: "not-a-cat-pairing-payload"
 - pressKey: Back
 - tapOn: "Import pairing"
-- assertVisible: "QR code or pairing link is invalid. Request new catpair:v1 data."
+- assertVisible: "The pairing QR or link is invalid. Request a fresh catpair:v1 payload."
 - takeScreenshot: cat-05-invalid-pairing
 - tapOn: "Manual / advanced settings"
 - assertVisible: "Server URL"
