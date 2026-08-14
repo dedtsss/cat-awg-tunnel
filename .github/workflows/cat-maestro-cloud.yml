@@ -4,6 +4,16 @@ permissions:
   contents: read
 
 on:
+  push:
+    branches: [codex/cat-awg-maestro-ui-visual-pilot]
+    paths:
+      - ".maestro/**"
+      - "CAT_UI_CHECKLIST.md"
+      - "app/**"
+      - "catcore/**"
+      - "tunnel/**"
+      - ".github/workflows/cat-debug-apk.yml"
+      - ".github/workflows/cat-maestro-cloud.yml"
   pull_request:
     types: [opened, synchronize, reopened]
     branches: [master]
