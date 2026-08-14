@@ -7,8 +7,7 @@ tags:
 ---
 - launchApp:
     clearState: true
-- tapOn:
-    point: "65%, 96%"
+- tapOn: "Settings"
 - assertVisible: "Tunnel"
 - scrollUntilVisible:
     element: "Cat Server"
@@ -38,8 +37,7 @@ tags:
 - takeScreenshot: cat-04-diagnostics-offline
 - pressKey: Back
 - assertVisible: "Cat Server"
-- tapOn:
-    point: "90%, 96%"
+- tapOn: "Support"
 - assertVisible: "Cat AWG Tunnel"
 - assertVisible: "git SHA:"
 - takeScreenshot: cat-12-support-provenance

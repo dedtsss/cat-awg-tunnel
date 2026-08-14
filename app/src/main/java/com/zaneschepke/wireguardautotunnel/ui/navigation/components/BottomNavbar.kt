@@ -21,6 +21,9 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.zaneschepke.wireguardautotunnel.ui.LocalIsAndroidTV
 import com.zaneschepke.wireguardautotunnel.ui.common.animations.AnimatedFloatIcon
@@ -48,6 +51,10 @@ fun BottomNavbar(isAutoTunnelActive: Boolean, currentTab: Tab, onTabSelected: (T
                             CompositionLocalProvider(LocalRippleConfiguration provides theme) {
                                 IconButton(
                                     onClick = { onTabSelected(tab) },
+                                    modifier =
+                                        Modifier.semantics {
+                                            contentDescription = stringResource(tab.titleRes)
+                                        },
                                     colors =
                                         IconButtonDefaults.iconButtonColors(
                                             containerColor = Color.Transparent,
