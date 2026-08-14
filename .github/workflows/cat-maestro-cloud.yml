@@ -79,7 +79,23 @@ jobs:
           echo "path=$apk_path" >> "$GITHUB_OUTPUT"
           echo "sha256=$digest" >> "$GITHUB_OUTPUT"
           echo "APK: $(basename "$apk_path")" >> "$GITHUB_STEP_SUMMARY"
-          echo "APK SHA-256: `$digest`" >> "$GITHUB_STEP_SUMMARY"
+          echo "APK SHA-256: $digest" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Validate Maestro Cloud credentials
+        shell: bash
+        env:
+          MAESTRO_API_KEY: ${{ secrets.MAESTRO_CLOUD_API_KEY || secrets.MAESTRO_API_KEY }}
+          MAESTRO_PROJECT_ID: ${{ secrets.MAESTRO_CLOUD_PROJECT_ID || secrets.MAESTRO_PROJECT_ID }}
+        run: |
+          set -euo pipefail
+          if [ -z "${MAESTRO_API_KEY:-}" ]; then
+            echo "Missing Actions secret: MAESTRO_CLOUD_API_KEY (or MAESTRO_API_KEY)" >&2
+            exit 1
+          fi
+          if [ -z "${MAESTRO_PROJECT_ID:-}" ]; then
+            echo "Missing Actions secret: MAESTRO_CLOUD_PROJECT_ID (or MAESTRO_PROJECT_ID)" >&2
+            exit 1
+          fi
 
       - name: Run CAT flows on Maestro Cloud
         id: maestro
@@ -113,8 +129,8 @@ jobs:
           printf '%s\n' "${FLOW_RESULTS:-[]}" > build/cat-maestro/flow-results.json
           {
             echo "## Maestro Cloud evidence"
-            echo "- Action outcome: `${ACTION_OUTCOME:-UNKNOWN}`"
-            echo "- Cloud upload status: `${CLOUD_STATUS:-UNAVAILABLE}`"
+            echo "- Action outcome: ${ACTION_OUTCOME:-UNKNOWN}"
+            echo "- Cloud upload status: ${CLOUD_STATUS:-UNAVAILABLE}"
             if [ -n "${CONSOLE_URL:-}" ]; then
               echo "- Console: ${CONSOLE_URL}"
             else
