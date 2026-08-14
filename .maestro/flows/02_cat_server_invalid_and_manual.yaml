@@ -39,5 +39,5 @@ tags:
     element: "Verify connection"
     direction: DOWN
 - tapOn: "Verify connection"
-- assertVisible: "Cat Server is unreachable. Check host, port, firewall and network."
+- assertVisible: "Cat Server request failed. Check the server status and try again."
 - takeScreenshot: cat-07-manual-offline-error
