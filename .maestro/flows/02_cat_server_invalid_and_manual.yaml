@@ -21,6 +21,9 @@ tags:
 - tapOn: "Import pairing"
 - assertVisible: "The pairing QR or link is invalid. Request a fresh catpair:v1 payload."
 - takeScreenshot: cat-05-invalid-pairing
+- scrollUntilVisible:
+    element: "Manual / advanced settings"
+    direction: DOWN
 - tapOn: "Manual / advanced settings"
 - assertVisible: "Server URL"
 - assertVisible: "Certificate SHA-256 fingerprint"

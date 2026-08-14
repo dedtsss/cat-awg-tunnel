@@ -38,6 +38,9 @@ tags:
 - pressKey: Back
 - assertVisible: "Cat Server"
 - tapOn: "Support"
+- scrollUntilVisible:
+    element: "Cat AWG Tunnel"
+    direction: DOWN
 - assertVisible: "Cat AWG Tunnel"
 - assertVisible: "git SHA:"
 - takeScreenshot: cat-12-support-provenance
