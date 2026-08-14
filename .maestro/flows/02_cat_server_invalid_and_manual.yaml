@@ -25,6 +25,9 @@ tags:
     element: "Manual / advanced settings"
     direction: DOWN
 - tapOn: "Manual / advanced settings"
+- scrollUntilVisible:
+    element: "Server URL"
+    direction: DOWN
 - assertVisible: "Server URL"
 - assertVisible: "Certificate SHA-256 fingerprint"
 - assertVisible: "One-time bootstrap token"

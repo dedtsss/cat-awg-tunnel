@@ -42,5 +42,8 @@ tags:
     element: "Cat AWG Tunnel"
     direction: DOWN
 - assertVisible: "Cat AWG Tunnel"
+- scrollUntilVisible:
+    element: "git SHA: .*"
+    direction: DOWN
 - assertVisible: "git SHA:"
 - takeScreenshot: cat-12-support-provenance

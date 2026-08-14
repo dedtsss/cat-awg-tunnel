@@ -42,6 +42,9 @@ tags:
     element: "Validate locally"
     direction: DOWN
 - tapOn: "Validate locally"
+- scrollUntilVisible:
+    element: "Local validation: valid"
+    direction: UP
 - assertVisible: "Local validation: valid"
 - takeScreenshot: cat-10-configurator-valid
 - tapOn: "Save candidate"
