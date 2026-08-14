@@ -9,7 +9,7 @@ tags:
 - launchApp:
     clearState: true
 - tapOn:
-    point: "75%, 90%"
+    point: "63%, 90%"
 - assertVisible: "Tunnel"
 - scrollUntilVisible:
     element: "AWG Configurator"
