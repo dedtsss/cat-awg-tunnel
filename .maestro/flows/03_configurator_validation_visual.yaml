@@ -13,6 +13,7 @@ tags:
 - assertVisible: "AWG Configurator v1"
 - tapOn: "Candidate name"
 - inputText: "Pilot invalid profile"
+- pressKey: Back
 - tapOn: "WireGuard/AWG profile (paste/import)"
 - inputText: "[Interface]\nAddress = not-a-cidr"
 - takeScreenshot: cat-08-configurator-keyboard

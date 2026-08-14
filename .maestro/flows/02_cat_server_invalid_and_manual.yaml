@@ -13,6 +13,7 @@ tags:
 - assertVisible: "Connect Cat Server"
 - tapOn: "Pairing payload"
 - inputText: "not-a-cat-pairing-payload"
+- pressKey: Back
 - tapOn: "Import pairing"
 - assertVisible: "QR code or pairing link is invalid. Request new catpair:v1 data."
 - takeScreenshot: cat-05-invalid-pairing
@@ -26,4 +27,3 @@ tags:
 - tapOn: "Verify connection"
 - assertVisible: "Cat Server is unreachable. Check host, port, firewall and network."
 - takeScreenshot: cat-07-manual-offline-error
-
