@@ -9,7 +9,7 @@ tags:
 - launchApp:
     clearState: true
 - tapOn:
-    point: "65%, 90%"
+    point: "65%, 96%"
 - assertVisible: "Tunnel"
 - scrollUntilVisible:
     element: "Cat Server"
