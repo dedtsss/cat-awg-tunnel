@@ -10,6 +10,9 @@ tags:
     clearState: true
 - tapOn:
     point: "63%, 95%"
+- scrollUntilVisible:
+    element: "Cat Server"
+    direction: DOWN
 - tapOn: "Cat Server"
 - assertVisible: "Connect Cat Server"
 - tapOn: "Pairing payload"

@@ -10,6 +10,9 @@ tags:
     clearState: true
 - tapOn:
     point: "63%, 95%"
+- scrollUntilVisible:
+    element: "AWG Configurator"
+    direction: DOWN
 - tapOn: "AWG Configurator"
 - assertVisible: "AWG Configurator v1"
 - tapOn: "Candidate name"
