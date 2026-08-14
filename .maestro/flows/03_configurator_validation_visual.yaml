@@ -1,0 +1,32 @@
+appId: com.dedtsss.catawgtunnel.debug
+name: CAT Configurator validation and keyboard layout
+tags:
+  - cat
+  - functional
+  - visual
+  - negative
+---
+- launchApp:
+    clearState: true
+- tapOn: "Settings"
+- tapOn: "AWG Configurator"
+- assertVisible: "AWG Configurator v1"
+- tapOn: "Candidate name"
+- inputText: "Pilot invalid profile"
+- tapOn: "WireGuard/AWG profile (paste/import)"
+- inputText: "[Interface]\nAddress = not-a-cidr"
+- takeScreenshot: cat-08-configurator-keyboard
+- pressKey: Back
+- tapOn: "Validate locally"
+- assertVisible: "Local validation: needs changes"
+- takeScreenshot: cat-09-configurator-invalid
+- tapOn: "WireGuard/AWG profile (paste/import)"
+- eraseText: 1000
+- inputText: "[Interface]\nPrivateKey = client-private-key\nAddress = 10.7.0.2/32\nDNS = 1.1.1.1\n\n[Peer]\nPublicKey = server-public-key\nAllowedIPs = 0.0.0.0/0\nEndpoint = vpn.example.com:51820\nPersistentKeepalive = 25"
+- pressKey: Back
+- tapOn: "Validate locally"
+- assertVisible: "Local validation: valid"
+- takeScreenshot: cat-10-configurator-valid
+- tapOn: "Save candidate"
+- assertVisible: "candidate profile saved; no networking change was applied"
+- takeScreenshot: cat-11-configurator-saved
