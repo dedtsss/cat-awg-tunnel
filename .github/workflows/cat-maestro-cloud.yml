@@ -9,10 +9,6 @@ on:
     paths:
       - ".maestro/**"
       - "CAT_UI_CHECKLIST.md"
-      - "app/**"
-      - "catcore/**"
-      - "tunnel/**"
-      - ".github/workflows/cat-debug-apk.yml"
       - ".github/workflows/cat-maestro-cloud.yml"
   pull_request:
     types: [opened, synchronize, reopened]
@@ -20,66 +16,56 @@ on:
     paths:
       - ".maestro/**"
       - "CAT_UI_CHECKLIST.md"
-      - "app/**"
-      - "catcore/**"
-      - "tunnel/**"
-      - ".github/workflows/cat-debug-apk.yml"
       - ".github/workflows/cat-maestro-cloud.yml"
   workflow_dispatch:
     inputs:
       ref:
-        description: "Exact branch or commit to test"
+        description: "Exact CAT flow/docs/workflow ref to test"
         required: false
         type: string
         default: "codex/cat-awg-maestro-ui-visual-pilot"
+      app_binary_id:
+        description: "Verified Maestro Cloud app-binary-id (leave default unless Android source changed)"
+        required: false
+        type: string
+        default: "c51bc7fac8ec4db6730fe55734d468a6757f4618"
 
 concurrency:
   group: cat-maestro-cloud-${{ github.event.pull_request.head.ref || inputs.ref || github.ref }}
   cancel-in-progress: true
 
-jobs:
-  build:
-    name: Build exact-head CAT APK
-    uses: ./.github/workflows/cat-debug-apk.yml
-    with:
-      checkout_ref: ${{ github.event.pull_request.head.sha || inputs.ref || github.sha }}
-    secrets: inherit
+env:
+  # Immutable binary from the exact-head APK build in run 31821511156.  This is
+  # deliberately a non-secret, reviewable mapping; flow-only work must not build
+  # or upload another Android binary.
+  CAT_MAESTRO_APP_BINARY_ID: c51bc7fac8ec4db6730fe55734d468a6757f4618
+  CAT_MAESTRO_APK_SHA256: 82e9adf7cf7e9969e92152251a3a3108f3a6ba8c981213d54931d7a0bdc517dd
+  CAT_MAESTRO_BINARY_SOURCE_SHA: 1b4ebc9cc9304f58b5fc0c2d0baaebdb52989745
 
+jobs:
   cloud:
-    name: Run CAT flows on Maestro Cloud
-    needs: build
+    name: Run CAT flows on Maestro Cloud (reused binary)
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
-      - name: Checkout exact tested ref
+      - name: Checkout CAT flows only
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
           submodules: recursive
           ref: ${{ github.event.pull_request.head.sha || inputs.ref || github.sha }}
 
-      - name: Download exact-head APK artifact
-        uses: actions/download-artifact@v8
-        with:
-          pattern: cat-awg-tunnel-debug-${{ github.run_id }}
-          path: ci-artifacts
-          merge-multiple: true
-
-      - name: Verify APK provenance and integrity
-        id: apk
+      - name: Verify immutable binary provenance
         shell: bash
         run: |
           set -euo pipefail
-          mapfile -t apk_paths < <(find "$GITHUB_WORKSPACE/ci-artifacts" -type f -name '*.apk' -print)
-          test "${#apk_paths[@]}" -eq 1
-          apk_path="${apk_paths[0]}"
-          unzip -t "$apk_path" >/dev/null
-          digest="$(sha256sum "$apk_path" | awk '{print $1}')"
-          echo "path=$apk_path" >> "$GITHUB_OUTPUT"
-          echo "sha256=$digest" >> "$GITHUB_OUTPUT"
-          echo "APK: $(basename "$apk_path")" >> "$GITHUB_STEP_SUMMARY"
-          echo "APK SHA-256: $digest" >> "$GITHUB_STEP_SUMMARY"
+          jq -e \
+            --arg source "$CAT_MAESTRO_BINARY_SOURCE_SHA" \
+            --arg sha256 "$CAT_MAESTRO_APK_SHA256" \
+            --arg binary "$CAT_MAESTRO_APP_BINARY_ID" \
+            '.source_sha == $source and .apk_sha256 == $sha256 and .app_binary_id == $binary' \
+            .maestro/maestro-cloud-binary-provenance.json >/dev/null
 
       - name: Validate Maestro Cloud credentials
         shell: bash
@@ -104,9 +90,9 @@ jobs:
         with:
           api-key: ${{ secrets.MAESTRO_CLOUD_API_KEY || secrets.MAESTRO_API_KEY }}
           project-id: ${{ secrets.MAESTRO_CLOUD_PROJECT_ID || secrets.MAESTRO_PROJECT_ID }}
-          app-file: ${{ steps.apk.outputs.path }}
+          app-binary-id: ${{ inputs.app_binary_id || env.CAT_MAESTRO_APP_BINARY_ID }}
           workspace: .maestro/flows
-          name: cat-awg-pr2-${{ github.run_id }}
+          name: cat-awg-pr2-reuse-${{ github.run_id }}
           branch: ${{ github.event.pull_request.head.ref || inputs.ref || github.ref_name }}
           device-model: pixel_6
           device-os: android-35
@@ -127,8 +113,23 @@ jobs:
           set -euo pipefail
           mkdir -p build/cat-maestro
           printf '%s\n' "${FLOW_RESULTS:-[]}" > build/cat-maestro/flow-results.json
+          cp .maestro/maestro-cloud-binary-provenance.json build/cat-maestro/immutable-binary-provenance.json
+          flow_ref="$(git rev-parse HEAD)"
+          jq -n \
+            --arg binary_source_sha "$CAT_MAESTRO_BINARY_SOURCE_SHA" \
+            --arg apk_sha256 "$CAT_MAESTRO_APK_SHA256" \
+            --arg app_binary_id "${APP_BINARY_ID:-$CAT_MAESTRO_APP_BINARY_ID}" \
+            --arg flow_ref "$flow_ref" \
+            --arg action_outcome "${ACTION_OUTCOME:-UNKNOWN}" \
+            --arg cloud_status "${CLOUD_STATUS:-UNAVAILABLE}" \
+            --arg console_url "${CONSOLE_URL:-UNAVAILABLE}" \
+            '{binary_source_sha: $binary_source_sha, apk_sha256: $apk_sha256, app_binary_id: $app_binary_id, flow_ref: $flow_ref, action_outcome: $action_outcome, cloud_status: $cloud_status, console_url: $console_url}' \
+            > build/cat-maestro/run-metadata.json
           {
             echo "## Maestro Cloud evidence"
+            echo "- Binary reuse: app-binary-id ${APP_BINARY_ID:-$CAT_MAESTRO_APP_BINARY_ID}"
+            echo "- APK SHA-256: $CAT_MAESTRO_APK_SHA256"
+            echo "- Flow ref: $flow_ref"
             echo "- Action outcome: ${ACTION_OUTCOME:-UNKNOWN}"
             echo "- Cloud upload status: ${CLOUD_STATUS:-UNAVAILABLE}"
             if [ -n "${CONSOLE_URL:-}" ]; then
@@ -136,19 +137,7 @@ jobs:
             else
               echo "- Console: unavailable"
             fi
-            if [ -n "${APP_BINARY_ID:-}" ]; then
-              echo "- App binary uploaded: yes (identifier retained in runner output only)"
-            else
-              echo "- App binary uploaded: unavailable"
-            fi
           } >> "$GITHUB_STEP_SUMMARY"
-          {
-            echo "tested_ref=${{ github.event.pull_request.head.sha || inputs.ref || github.sha }}"
-            echo "apk_sha256=${{ steps.apk.outputs.sha256 }}"
-            echo "action_outcome=${ACTION_OUTCOME:-UNKNOWN}"
-            echo "cloud_status=${CLOUD_STATUS:-UNAVAILABLE}"
-            echo "console_url=${CONSOLE_URL:-UNAVAILABLE}"
-          } > build/cat-maestro/run-metadata.txt
 
       - name: Upload CAT Cloud evidence metadata
         if: always()

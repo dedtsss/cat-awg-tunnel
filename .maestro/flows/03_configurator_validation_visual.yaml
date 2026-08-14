@@ -44,9 +44,12 @@ tags:
 - tapOn: "Validate locally"
 - scrollUntilVisible:
     element: "Local validation: valid"
-    direction: UP
+    direction: DOWN
 - assertVisible: "Local validation: valid"
 - takeScreenshot: cat-10-configurator-valid
+- scrollUntilVisible:
+    element: "Save candidate"
+    direction: UP
 - tapOn: "Save candidate"
 - assertVisible: "candidate profile saved; no networking change was applied"
 - takeScreenshot: cat-11-configurator-saved

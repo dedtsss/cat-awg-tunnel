@@ -45,5 +45,5 @@ tags:
 - scrollUntilVisible:
     element: "git SHA: .*"
     direction: DOWN
-- assertVisible: "git SHA:"
+- assertVisible: "git SHA: .*"
 - takeScreenshot: cat-12-support-provenance

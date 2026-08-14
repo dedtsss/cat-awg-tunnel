@@ -5,10 +5,13 @@ visual evidence for the Cat-added screens without changing product behavior.
 
 ## Run
 
-The suite is intended to run against the exact-head APK produced by GitHub Actions:
+The first upload of a new Android/product/testability revision uses the exact-head APK
+produced by GitHub Actions. Every later flow-only/docs-only iteration reuses the
+verified immutable Cloud binary recorded in
+`.maestro/maestro-cloud-binary-provenance.json`; it must not build or upload another APK.
 
 ```text
-maestro cloud <exact-head-apk> .maestro/flows \
+maestro cloud --app-binary-id <verified-binary-id> .maestro/flows \
   --apiKey <runtime secret> --projectId <runtime secret> \
   --repoOwner dedtsss --repoName cat-awg-tunnel \
   --branch codex/goal-a-cat-awg-android \
@@ -19,6 +22,10 @@ maestro cloud <exact-head-apk> .maestro/flows \
 
 Do not put cloud credentials in this file, CI artifacts, screenshots or reports. The three
 flows use only safe local/offline states; they do not assert a VPN handshake or server reachability.
+
+The GitHub workflow persists the current flow ref, immutable-binary mapping, result JSON and
+Console URL in its evidence artifact. Maestro's supported visual inspection surface is the
+authenticated Cloud Console; functional Cloud PASS alone never makes the visual audit PASS.
 
 ## Coverage matrix
 
