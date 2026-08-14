@@ -8,7 +8,8 @@ tags:
 - launchApp:
     clearState: true
 - tapOn:
-    point: "63%, 95%"
+    point: "75%, 90%"
+- assertVisible: "Tunnel"
 - scrollUntilVisible:
     element: "Cat Server"
     direction: DOWN
@@ -34,7 +35,7 @@ tags:
 - pressKey: Back
 - assertVisible: "Cat Server"
 - tapOn:
-    point: "88%, 95%"
+    point: "90%, 90%"
 - assertVisible: "Cat AWG Tunnel"
 - assertVisible: "git SHA:"
 - takeScreenshot: cat-12-support-provenance
