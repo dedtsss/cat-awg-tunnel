@@ -37,7 +37,7 @@ authenticated Cloud Console; functional Cloud PASS alone never makes the visual 
 | CAT-04 | Cat Server manual form | expand fields and offline error path | `cat-06-manual-form`, `cat-07-manual-offline-error` | `APP_BUG` only with correlated evidence |
 | CAT-05 | AWG Configurator initial | AWG3 capability-gated state | `cat-03-configurator-start` | `APP_BUG` only with correlated evidence |
 | CAT-06 | AWG Configurator invalid | keyboard shift and local validation | `cat-08-configurator-keyboard`, `cat-09-configurator-invalid` | `APP_BUG` only with correlated evidence |
-| CAT-07 | AWG Configurator valid/save | deterministic validation and candidate save | `cat-10-configurator-valid`, `cat-11-configurator-saved` | `APP_BUG` only with correlated evidence |
+| CAT-07 | AWG Configurator valid/save | isolated deterministic validation and candidate save | `cat-10-configurator-valid`, `cat-11-configurator-saved` | `APP_BUG` only with correlated evidence |
 | CAT-08 | Diagnostics standalone | offline diagnostics state and back navigation | `cat-04-diagnostics-offline` | `APP_BUG` only with correlated evidence |
 | CAT-09 | About/support provenance | product identity and git SHA are visible | `cat-12-support-provenance` | `APP_BUG` only with correlated evidence |
 
