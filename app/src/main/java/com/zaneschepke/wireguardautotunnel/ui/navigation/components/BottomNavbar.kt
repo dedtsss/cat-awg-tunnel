@@ -48,12 +48,13 @@ fun BottomNavbar(isAutoTunnelActive: Boolean, currentTab: Tab, onTabSelected: (T
                     val hasBadge = tab == Tab.AUTOTUNNEL && isAutoTunnelActive
                     val button =
                         @Stable @Composable {
+                            val tabTitle = stringResource(tab.titleRes)
                             CompositionLocalProvider(LocalRippleConfiguration provides theme) {
                                 IconButton(
                                     onClick = { onTabSelected(tab) },
                                     modifier =
                                         Modifier.semantics {
-                                            contentDescription = stringResource(tab.titleRes)
+                                            contentDescription = tabTitle
                                         },
                                     colors =
                                         IconButtonDefaults.iconButtonColors(
