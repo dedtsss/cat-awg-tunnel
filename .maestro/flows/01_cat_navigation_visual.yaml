@@ -29,4 +29,7 @@ tags:
 - takeScreenshot: cat-04-diagnostics-offline
 - pressKey: Back
 - assertVisible: "Cat Server"
-
+- tapOn: "Support"
+- assertVisible: "Cat AWG Tunnel"
+- assertVisible: "git SHA:"
+- takeScreenshot: cat-12-support-provenance

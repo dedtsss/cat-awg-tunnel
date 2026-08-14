@@ -32,6 +32,7 @@ flows use only safe local/offline states; they do not assert a VPN handshake or 
 | CAT-06 | AWG Configurator invalid | keyboard shift and local validation | `cat-08-configurator-keyboard`, `cat-09-configurator-invalid` | `APP_BUG` only with correlated evidence |
 | CAT-07 | AWG Configurator valid/save | deterministic validation and candidate save | `cat-10-configurator-valid`, `cat-11-configurator-saved` | `APP_BUG` only with correlated evidence |
 | CAT-08 | Diagnostics standalone | offline diagnostics state and back navigation | `cat-04-diagnostics-offline` | `APP_BUG` only with correlated evidence |
+| CAT-09 | About/support provenance | product identity and git SHA are visible | `cat-12-support-provenance` | `APP_BUG` only with correlated evidence |
 
 ## Evidence rule
 
@@ -39,4 +40,3 @@ Functional PASS does not imply visual PASS. Every screenshot must be inspected f
 clipping, hidden controls, keyboard occlusion, hierarchy, spacing, and narrow-layout overflow.
 Any suspected visual failure remains `UNKNOWN` until correlated with hierarchy/geometry or
 reproducible behavior; only then can it become `APP_BUG`.
-
