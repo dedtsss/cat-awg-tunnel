@@ -27,7 +27,8 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  CAT_TEST_VERSION_BASE: '50202'
+  # Keep newly produced CAT test-channel APKs above the last published test build.
+  CAT_TEST_VERSION_BASE: '50250'
 
 jobs:
   verify-and-package:
