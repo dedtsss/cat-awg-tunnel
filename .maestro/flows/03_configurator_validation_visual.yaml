@@ -1,0 +1,33 @@
+appId: com.dedtsss.catawgtunnel.debug
+name: CAT Configurator validation and keyboard layout
+tags:
+  - cat
+  - functional
+  - visual
+  - negative
+---
+- launchApp:
+    clearState: true
+- tapOn: "Settings"
+- assertVisible: "Tunnel"
+- scrollUntilVisible:
+    element: "AWG Configurator"
+    direction: DOWN
+- tapOn: "AWG Configurator"
+- assertVisible: "AWG Configurator v1"
+- tapOn: "Candidate name"
+- inputText: "Pilot invalid profile"
+- pressKey: Back
+- scrollUntilVisible:
+    element: "WireGuard/AWG profile (paste/import)"
+    direction: DOWN
+- tapOn: "WireGuard/AWG profile (paste/import)"
+- inputText: "[Interface]\nAddress = not-a-cidr"
+- takeScreenshot: cat-08-configurator-keyboard
+- pressKey: Back
+- scrollUntilVisible:
+    element: "Validate locally"
+    direction: DOWN
+- tapOn: "Validate locally"
+- assertVisible: "Local validation: needs changes"
+- takeScreenshot: cat-09-configurator-invalid

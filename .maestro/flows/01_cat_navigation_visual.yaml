@@ -1,0 +1,49 @@
+appId: com.dedtsss.catawgtunnel.debug
+name: CAT navigation and screen inventory
+tags:
+  - cat
+  - functional
+  - visual
+---
+- launchApp:
+    clearState: true
+- tapOn: "Settings"
+- assertVisible: "Tunnel"
+- scrollUntilVisible:
+    element: "Cat Server"
+    direction: DOWN
+- assertVisible: "Cat Server"
+- assertVisible: "AWG Configurator"
+- assertVisible: "Cat Server"
+- assertVisible: "AWG Configurator"
+- takeScreenshot: cat-01-settings
+- tapOn: "Cat Server"
+- assertVisible: "Connect Cat Server"
+- assertVisible: "Status: Not configured"
+- takeScreenshot: cat-02-cat-server-start
+- pressKey: Back
+- assertVisible: "AWG Configurator"
+- tapOn: "AWG Configurator"
+- assertVisible: "AWG Configurator v1"
+- assertVisible: "AWG3 unavailable"
+- takeScreenshot: cat-03-configurator-start
+- pressKey: Back
+- scrollUntilVisible:
+    element: "Client diagnostics"
+    direction: UP
+- tapOn: "Client diagnostics"
+- assertVisible: "Diagnostics"
+- assertVisible: "No Cat Server paired; standalone diagnostics mode is active."
+- takeScreenshot: cat-04-diagnostics-offline
+- pressKey: Back
+- assertVisible: "Cat Server"
+- tapOn: "Support"
+- scrollUntilVisible:
+    element: "Cat AWG Tunnel"
+    direction: DOWN
+- assertVisible: "Cat AWG Tunnel"
+- scrollUntilVisible:
+    element: "git SHA: .*"
+    direction: DOWN
+- assertVisible: "git SHA: .*"
+- takeScreenshot: cat-12-support-provenance

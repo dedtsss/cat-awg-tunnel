@@ -1,0 +1,161 @@
+name: cat-maestro-cloud
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: [codex/cat-awg-maestro-ui-visual-pilot]
+    paths:
+      - ".maestro/**"
+      - "CAT_UI_CHECKLIST.md"
+      - ".github/workflows/cat-maestro-cloud.yml"
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [master]
+    paths:
+      - ".maestro/**"
+      - "CAT_UI_CHECKLIST.md"
+      - ".github/workflows/cat-maestro-cloud.yml"
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Exact CAT flow/docs/workflow ref to test"
+        required: false
+        type: string
+        default: "codex/cat-awg-maestro-ui-visual-pilot"
+      app_binary_id:
+        description: "Verified Maestro Cloud app-binary-id (leave default unless Android source changed)"
+        required: false
+        type: string
+        default: "c51bc7fac8ec4db6730fe55734d468a6757f4618"
+
+concurrency:
+  group: cat-maestro-cloud-${{ github.event.pull_request.head.ref || inputs.ref || github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Immutable binary from the exact-head APK build in run 31821511156.  This is
+  # deliberately a non-secret, reviewable mapping; flow-only work must not build
+  # or upload another Android binary.
+  CAT_MAESTRO_APP_BINARY_ID: c51bc7fac8ec4db6730fe55734d468a6757f4618
+  CAT_MAESTRO_APK_SHA256: 82e9adf7cf7e9969e92152251a3a3108f3a6ba8c981213d54931d7a0bdc517dd
+  CAT_MAESTRO_BINARY_SOURCE_SHA: 1b4ebc9cc9304f58b5fc0c2d0baaebdb52989745
+
+jobs:
+  cloud:
+    name: Run CAT flows on Maestro Cloud (reused binary)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout CAT flows only
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          submodules: recursive
+          ref: ${{ github.event.pull_request.head.sha || inputs.ref || github.sha }}
+
+      - name: Verify immutable binary provenance
+        shell: bash
+        run: |
+          set -euo pipefail
+          jq -e \
+            --arg source "$CAT_MAESTRO_BINARY_SOURCE_SHA" \
+            --arg sha256 "$CAT_MAESTRO_APK_SHA256" \
+            --arg binary "$CAT_MAESTRO_APP_BINARY_ID" \
+            '.source_sha == $source and .apk_sha256 == $sha256 and .app_binary_id == $binary' \
+            .maestro/maestro-cloud-binary-provenance.json >/dev/null
+
+      - name: Validate Maestro Cloud credentials
+        shell: bash
+        env:
+          MAESTRO_API_KEY: ${{ secrets.MAESTRO_CLOUD_API_KEY || secrets.MAESTRO_API_KEY }}
+          MAESTRO_PROJECT_ID: ${{ secrets.MAESTRO_CLOUD_PROJECT_ID || secrets.MAESTRO_PROJECT_ID }}
+        run: |
+          set -euo pipefail
+          if [ -z "${MAESTRO_API_KEY:-}" ]; then
+            echo "Missing Actions secret: MAESTRO_CLOUD_API_KEY (or MAESTRO_API_KEY)" >&2
+            exit 1
+          fi
+          if [ -z "${MAESTRO_PROJECT_ID:-}" ]; then
+            echo "Missing Actions secret: MAESTRO_CLOUD_PROJECT_ID (or MAESTRO_PROJECT_ID)" >&2
+            exit 1
+          fi
+
+      - name: Run CAT flows on Maestro Cloud
+        id: maestro
+        continue-on-error: true
+        uses: mobile-dev-inc/action-maestro-cloud@v3.0.1
+        with:
+          api-key: ${{ secrets.MAESTRO_CLOUD_API_KEY || secrets.MAESTRO_API_KEY }}
+          project-id: ${{ secrets.MAESTRO_CLOUD_PROJECT_ID || secrets.MAESTRO_PROJECT_ID }}
+          app-binary-id: ${{ inputs.app_binary_id || env.CAT_MAESTRO_APP_BINARY_ID }}
+          workspace: .maestro/flows
+          name: cat-awg-pr2-reuse-${{ github.run_id }}
+          branch: ${{ github.event.pull_request.head.ref || inputs.ref || github.ref_name }}
+          device-model: pixel_6
+          device-os: android-35
+          device-locale: en_US
+          include-tags: cat
+          timeout: 30
+
+      - name: Preserve Maestro Cloud result evidence
+        if: always()
+        shell: bash
+        env:
+          ACTION_OUTCOME: ${{ steps.maestro.outcome }}
+          CLOUD_STATUS: ${{ steps.maestro.outputs.MAESTRO_CLOUD_UPLOAD_STATUS }}
+          CONSOLE_URL: ${{ steps.maestro.outputs.MAESTRO_CLOUD_CONSOLE_URL }}
+          APP_BINARY_ID: ${{ steps.maestro.outputs.MAESTRO_CLOUD_APP_BINARY_ID }}
+          FLOW_RESULTS: ${{ steps.maestro.outputs.MAESTRO_CLOUD_FLOW_RESULTS }}
+        run: |
+          set -euo pipefail
+          mkdir -p build/cat-maestro
+          printf '%s\n' "${FLOW_RESULTS:-[]}" > build/cat-maestro/flow-results.json
+          cp .maestro/maestro-cloud-binary-provenance.json build/cat-maestro/immutable-binary-provenance.json
+          flow_ref="$(git rev-parse HEAD)"
+          jq -n \
+            --arg binary_source_sha "$CAT_MAESTRO_BINARY_SOURCE_SHA" \
+            --arg apk_sha256 "$CAT_MAESTRO_APK_SHA256" \
+            --arg app_binary_id "${APP_BINARY_ID:-$CAT_MAESTRO_APP_BINARY_ID}" \
+            --arg flow_ref "$flow_ref" \
+            --arg action_outcome "${ACTION_OUTCOME:-UNKNOWN}" \
+            --arg cloud_status "${CLOUD_STATUS:-UNAVAILABLE}" \
+            --arg console_url "${CONSOLE_URL:-UNAVAILABLE}" \
+            '{binary_source_sha: $binary_source_sha, apk_sha256: $apk_sha256, app_binary_id: $app_binary_id, flow_ref: $flow_ref, action_outcome: $action_outcome, cloud_status: $cloud_status, console_url: $console_url}' \
+            > build/cat-maestro/run-metadata.json
+          {
+            echo "## Maestro Cloud evidence"
+            echo "- Binary reuse: app-binary-id ${APP_BINARY_ID:-$CAT_MAESTRO_APP_BINARY_ID}"
+            echo "- APK SHA-256: $CAT_MAESTRO_APK_SHA256"
+            echo "- Flow ref: $flow_ref"
+            echo "- Action outcome: ${ACTION_OUTCOME:-UNKNOWN}"
+            echo "- Cloud upload status: ${CLOUD_STATUS:-UNAVAILABLE}"
+            if [ -n "${CONSOLE_URL:-}" ]; then
+              echo "- Console: ${CONSOLE_URL}"
+            else
+              echo "- Console: unavailable"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload CAT Cloud evidence metadata
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: cat-awg-maestro-cloud-evidence-${{ github.run_id }}
+          path: build/cat-maestro
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Require terminal Cloud success
+        if: always()
+        env:
+          CLOUD_STATUS: ${{ steps.maestro.outputs.MAESTRO_CLOUD_UPLOAD_STATUS }}
+          ACTION_OUTCOME: ${{ steps.maestro.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "${ACTION_OUTCOME:-}" != "success" ] || [ "${CLOUD_STATUS:-}" != "SUCCESS" ]; then
+            echo "Maestro Cloud did not reach SUCCESS: outcome=${ACTION_OUTCOME:-UNKNOWN}, status=${CLOUD_STATUS:-UNAVAILABLE}" >&2
+            exit 1
+          fi

@@ -1,0 +1,37 @@
+appId: com.dedtsss.catawgtunnel.debug
+name: CAT Configurator valid candidate and save
+tags:
+  - cat
+  - functional
+  - visual
+---
+- launchApp:
+    clearState: true
+- tapOn: "Settings"
+- assertVisible: "Tunnel"
+- scrollUntilVisible:
+    element: "AWG Configurator"
+    direction: DOWN
+- tapOn: "AWG Configurator"
+- assertVisible: "AWG Configurator v1"
+- scrollUntilVisible:
+    element: "WireGuard/AWG profile (paste/import)"
+    direction: DOWN
+- tapOn: "WireGuard/AWG profile (paste/import)"
+- inputText: "[Interface]\nPrivateKey = client-private-key\nAddress = 10.7.0.2/32\n\n[Peer]\nPublicKey = server-public-key\nAllowedIPs = 0.0.0.0/0\nEndpoint = vpn.example.com:51820"
+- pressKey: Back
+- scrollUntilVisible:
+    element: "Validate locally"
+    direction: DOWN
+- tapOn: "Validate locally"
+- scrollUntilVisible:
+    element: "Local validation: valid"
+    direction: DOWN
+- assertVisible: "Local validation: valid"
+- takeScreenshot: cat-10-configurator-valid
+- scrollUntilVisible:
+    element: "Save candidate"
+    direction: UP
+- tapOn: "Save candidate"
+- assertVisible: "candidate profile saved; no networking change was applied"
+- takeScreenshot: cat-11-configurator-saved

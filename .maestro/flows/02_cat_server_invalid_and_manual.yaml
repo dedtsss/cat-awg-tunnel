@@ -1,0 +1,43 @@
+appId: com.dedtsss.catawgtunnel.debug
+name: CAT Server invalid pairing and manual form
+tags:
+  - cat
+  - functional
+  - visual
+  - negative
+---
+- launchApp:
+    clearState: true
+- tapOn: "Settings"
+- assertVisible: "Tunnel"
+- scrollUntilVisible:
+    element: "Cat Server"
+    direction: DOWN
+- tapOn: "Cat Server"
+- assertVisible: "Connect Cat Server"
+- tapOn: "Pairing payload"
+- inputText: "not-a-cat-pairing-payload"
+- pressKey: Back
+- tapOn: "Import pairing"
+- assertVisible: "The pairing QR or link is invalid. Request a fresh catpair:v1 payload."
+- takeScreenshot: cat-05-invalid-pairing
+- scrollUntilVisible:
+    element: "Manual / advanced settings"
+    direction: DOWN
+- tapOn: "Manual / advanced settings"
+- scrollUntilVisible:
+    element: "Server URL"
+    direction: DOWN
+- assertVisible: "Server URL"
+- assertVisible: "Certificate SHA-256 fingerprint"
+- assertVisible: "One-time bootstrap token"
+- takeScreenshot: cat-06-manual-form
+- tapOn: "Server URL"
+- inputText: "http://invalid.example:8443"
+- pressKey: Back
+- scrollUntilVisible:
+    element: "Verify connection"
+    direction: DOWN
+- tapOn: "Verify connection"
+- assertVisible: "Cat Server request failed. Check the server status and try again."
+- takeScreenshot: cat-07-manual-offline-error

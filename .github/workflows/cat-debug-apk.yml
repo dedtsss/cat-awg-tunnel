@@ -6,13 +6,29 @@ permissions:
 on:
   pull_request:
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      checkout_ref:
+        description: "Exact commit or ref to build"
+        required: false
+        type: string
+    secrets:
+      CAT_AWG_TEST_KEYSTORE:
+        required: true
+      CAT_AWG_TEST_STORE_PASSWORD:
+        required: true
+      CAT_AWG_TEST_KEY_ALIAS:
+        required: true
+      CAT_AWG_TEST_KEY_PASSWORD:
+        required: true
 
 concurrency:
   group: cat-debug-apk-${{ github.ref }}
   cancel-in-progress: true
 
 env:
-  CAT_TEST_VERSION_BASE: '50202'
+  # Keep newly produced CAT test-channel APKs above the last published test build.
+  CAT_TEST_VERSION_BASE: '50250'
 
 jobs:
   verify-and-package:
@@ -22,6 +38,7 @@ jobs:
         with:
           fetch-depth: 0
           submodules: recursive
+          ref: ${{ inputs.checkout_ref || github.event.pull_request.head.sha || github.sha }}
 
       - name: Set up JDK 21
         uses: actions/setup-java@v5
@@ -104,7 +121,7 @@ jobs:
       - name: Upload installable debug APK
         uses: actions/upload-artifact@v7
         with:
-          name: cat-awg-tunnel-debug-${{ github.sha }}
+          name: cat-awg-tunnel-debug-${{ github.run_id }}
           path: ${{ steps.apk.outputs.path }}
           if-no-files-found: error
           retention-days: 14
