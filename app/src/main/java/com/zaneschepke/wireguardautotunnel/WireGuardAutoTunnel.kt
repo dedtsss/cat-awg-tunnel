@@ -7,6 +7,7 @@ import com.zaneschepke.tunnel.di.tunnelModule
 import com.zaneschepke.tunnel.service.VpnService
 import com.zaneschepke.wireguardautotunnel.cat.diagnostics.CatDiagnosticsSyncWorker
 import com.zaneschepke.wireguardautotunnel.cat.diagnostics.ClientDiagnosticsObserver
+import com.zaneschepke.wireguardautotunnel.cat.runtime.CatRuntimeLog
 import com.zaneschepke.wireguardautotunnel.core.event.TunnelEventDispatcher
 import com.zaneschepke.wireguardautotunnel.core.orchestration.AppBoostrapCoordinator
 import com.zaneschepke.wireguardautotunnel.core.orchestration.TunnelCoordinator
@@ -64,6 +65,7 @@ class WireGuardAutoTunnel : Application(), KoinComponent {
     @OptIn(KoinViewModelScopeApi::class)
     override fun onCreate() {
         super.onCreate()
+        CatRuntimeLog.initialize(this)
         startKoin {
             androidContext(this@WireGuardAutoTunnel)
             if (BuildConfig.DEBUG) androidLogger()
@@ -106,7 +108,15 @@ class WireGuardAutoTunnel : Application(), KoinComponent {
         dispatcher.bind(applicationScope, provider.events, tunnelCoordinator.errors)
 
         applicationScope.launch(ioDispatcher) {
-            boostrapCoordinator.bootstrap(this@WireGuardAutoTunnel)
+            val operation = CatRuntimeLog.startOperation(
+                "startup", "startup.bootstrap", "bootstrap application", "bootstrap completes", 30_000L
+            )
+            runCatching { boostrapCoordinator.bootstrap(this@WireGuardAutoTunnel) }
+                .onSuccess { CatRuntimeLog.finishOperation(operation, "bootstrap complete") }
+                .onFailure { error ->
+                    CatRuntimeLog.finishOperation(operation, "bootstrap failed", "FAIL", "bootstrap exception")
+                    CatRuntimeLog.handledException("startup", "startup.bootstrap_error", "bootstrap application", "bootstrap completes", error)
+                }
         }
     }
 

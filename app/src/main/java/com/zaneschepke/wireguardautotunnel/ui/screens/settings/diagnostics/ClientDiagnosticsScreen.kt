@@ -1,8 +1,10 @@
 package com.zaneschepke.wireguardautotunnel.ui.screens.settings.diagnostics
 
 import android.content.ContentResolver
+import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.FileProvider
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -32,13 +34,17 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.dedtsss.catawg.core.diagnostics.DiagnosticExportBundle
 import com.dedtsss.catawg.core.diagnostics.DiagnosticExportWindow
+import com.zaneschepke.wireguardautotunnel.BuildConfig
 import com.zaneschepke.wireguardautotunnel.R
+import com.zaneschepke.wireguardautotunnel.cat.runtime.CatRuntimeLog
 import com.zaneschepke.wireguardautotunnel.viewmodel.ClientDiagnosticsViewModel
 import java.io.BufferedOutputStream
 import java.nio.charset.StandardCharsets
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 fun ClientDiagnosticsScreen(viewModel: ClientDiagnosticsViewModel) {
@@ -48,6 +54,7 @@ fun ClientDiagnosticsScreen(viewModel: ClientDiagnosticsViewModel) {
     var requestedWindow by rememberSaveable { mutableStateOf<DiagnosticExportWindow?>(null) }
     var requestedServerWindow by rememberSaveable { mutableStateOf<DiagnosticExportWindow?>(null) }
     var aiMessage by remember { mutableStateOf("") }
+    var catStatus by remember { mutableStateOf(CatRuntimeLog.status()) }
     val exportLauncher =
         rememberLauncherForActivityResult(
             ActivityResultContracts.CreateDocument("application/zip")
@@ -91,6 +98,44 @@ fun ClientDiagnosticsScreen(viewModel: ClientDiagnosticsViewModel) {
         Text(stringResource(R.string.diagnostics_title), style = MaterialTheme.typography.headlineSmall)
         Text(stringResource(R.string.diagnostics_intro))
         Text(stringResource(R.string.diagnostics_counts, state.eventCount, state.incidents.size))
+
+        Card(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier.padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(stringResource(R.string.cat_runtime_log_title), style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(R.string.cat_runtime_log_desc))
+                Text(catStatus)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(onClick = {
+                        scope.launch {
+                            runCatching {
+                                withContext(Dispatchers.IO) { CatRuntimeLog.export(context) }
+                            }.onSuccess { file ->
+                                catStatus = CatRuntimeLog.status()
+                                val uri = FileProvider.getUriForFile(context, BuildConfig.FILE_PROVIDER_AUTHORITY, file)
+                                val share = Intent(Intent.ACTION_SEND)
+                                    .setType("application/zip")
+                                    .putExtra(Intent.EXTRA_STREAM, uri)
+                                    .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                context.startActivity(Intent.createChooser(share, context.getString(R.string.cat_runtime_log_share)))
+                            }.onFailure { error ->
+                                CatRuntimeLog.handledException("diagnostics-ui", "cat_log.export_error", "export CAT Log", "share bundle created", error)
+                                catStatus = context.getString(R.string.cat_runtime_log_export_failed)
+                            }
+                        }
+                    }) { Text(stringResource(R.string.cat_runtime_log_export)) }
+                    TextButton(onClick = {
+                        CatRuntimeLog.clear()
+                        catStatus = CatRuntimeLog.status()
+                    }) { Text(stringResource(R.string.cat_runtime_log_clear)) }
+                    TextButton(onClick = { catStatus = CatRuntimeLog.status() }) {
+                        Text(stringResource(R.string.cat_runtime_log_refresh))
+                    }
+                }
+            }
+        }
 
         Card(modifier = Modifier.fillMaxWidth()) {
             Column(

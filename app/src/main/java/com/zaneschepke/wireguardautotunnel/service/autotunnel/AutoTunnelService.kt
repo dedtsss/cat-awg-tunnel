@@ -7,6 +7,7 @@ import androidx.lifecycle.lifecycleScope
 import com.zaneschepke.networkmonitor.AndroidNetworkMonitor
 import com.zaneschepke.networkmonitor.StableNetworkEngine
 import com.zaneschepke.wireguardautotunnel.R
+import com.zaneschepke.wireguardautotunnel.cat.runtime.CatRuntimeLog
 import com.zaneschepke.wireguardautotunnel.core.orchestration.TunnelCoordinator
 import com.zaneschepke.wireguardautotunnel.di.Dispatcher
 import com.zaneschepke.wireguardautotunnel.domain.enums.NotificationAction
@@ -108,6 +109,15 @@ class AutoTunnelService : LifecycleService() {
 
     override fun onCreate() {
         super.onCreate()
+        CatRuntimeLog.record(
+            "service",
+            "auto_tunnel_service.created",
+            "create Auto Tunnel service",
+            "service enters active lifecycle",
+            "created",
+            "PASS",
+            "LifecycleService.onCreate",
+        )
         stateHolder.setActive(true)
         launchWatcherNotification()
         observeForegroundNotification()
@@ -115,6 +125,15 @@ class AutoTunnelService : LifecycleService() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         super.onStartCommand(intent, flags, startId)
+        CatRuntimeLog.record(
+            "service",
+            "auto_tunnel_service.start_command",
+            "start Auto Tunnel service",
+            "service starts monitoring",
+            "startId=$startId",
+            "PASS",
+            "LifecycleService.onStartCommand",
+        )
         Timber.d("onStartCommand executed with startId: $startId")
         start()
         return START_STICKY
@@ -138,6 +157,15 @@ class AutoTunnelService : LifecycleService() {
     }
 
     override fun onDestroy() {
+        CatRuntimeLog.record(
+            "service",
+            "auto_tunnel_service.destroyed",
+            "destroy Auto Tunnel service",
+            "service stops cleanly",
+            "destroyed",
+            "PASS",
+            "LifecycleService.onDestroy",
+        )
         cancelNoInternetStopJob()
         foregroundNotificationJob?.cancel()
         // If Auto Tunnel was sharing the primary VPN notification, removing it here would also

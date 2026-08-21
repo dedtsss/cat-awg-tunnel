@@ -3,5 +3,5 @@
     <files-path name="files" path="." />
     <external-path name="external_files" path="." />
     <external-files-path name="apks" path="/" />
-    <cache-path name="cache_files" path="external_files/" />
+    <cache-path name="cache_files" path="." />
 </paths>
