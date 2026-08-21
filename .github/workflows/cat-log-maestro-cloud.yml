@@ -1,0 +1,122 @@
+name: cat-log-maestro-cloud
+
+permissions:
+  contents: read
+  actions: read
+
+on:
+  workflow_dispatch:
+    inputs:
+      artifact_run_id:
+        description: "cat-debug-apk run ID for this exact source SHA"
+        required: true
+        type: string
+
+concurrency:
+  group: cat-log-maestro-cloud-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    name: CAT Log smoke on Maestro Cloud
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact smoke source
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Validate Maestro Cloud credentials
+        shell: bash
+        env:
+          MAESTRO_API_KEY: ${{ secrets.MAESTRO_CLOUD_API_KEY || secrets.MAESTRO_API_KEY }}
+          MAESTRO_PROJECT_ID: ${{ secrets.MAESTRO_CLOUD_PROJECT_ID || secrets.MAESTRO_PROJECT_ID }}
+        run: |
+          set -euo pipefail
+          test -n "${MAESTRO_API_KEY:-}" || { echo 'Missing Maestro API key Actions secret' >&2; exit 1; }
+          test -n "${MAESTRO_PROJECT_ID:-}" || { echo 'Missing Maestro project ID Actions secret' >&2; exit 1; }
+
+      - name: Download exact-head APK artifact
+        id: apk
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_RUN_ID: ${{ inputs.artifact_run_id }}
+        run: |
+          set -euo pipefail
+          run_sha="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$ARTIFACT_RUN_ID" --jq .head_sha)"
+          test "$run_sha" = "$GITHUB_SHA" || {
+            echo "Artifact run SHA mismatch: run=$run_sha workflow=$GITHUB_SHA" >&2
+            exit 1
+          }
+          artifact_name="cat-awg-tunnel-debug-$GITHUB_SHA"
+          mkdir -p build/cat-log-apk
+          gh run download "$ARTIFACT_RUN_ID" --repo "$GITHUB_REPOSITORY" --name "$artifact_name" --dir build/cat-log-apk
+          mapfile -t apks < <(find build/cat-log-apk -type f -name '*.apk')
+          test "${#apks[@]}" -eq 1
+          digest="$(sha256sum "${apks[0]}" | awk '{print $1}')"
+          echo "path=${apks[0]}" >> "$GITHUB_OUTPUT"
+          echo "sha256=$digest" >> "$GITHUB_OUTPUT"
+          echo "Exact APK source SHA: $run_sha"
+          echo "Exact APK SHA-256: $digest"
+
+      - name: Run bounded CAT Log smoke
+        id: maestro
+        continue-on-error: true
+        uses: mobile-dev-inc/action-maestro-cloud@v3.0.1
+        with:
+          api-key: ${{ secrets.MAESTRO_CLOUD_API_KEY || secrets.MAESTRO_API_KEY }}
+          project-id: ${{ secrets.MAESTRO_CLOUD_PROJECT_ID || secrets.MAESTRO_PROJECT_ID }}
+          app-file: ${{ steps.apk.outputs.path }}
+          workspace: .maestro/cat-log-smoke
+          name: cat-log-smoke-${{ github.run_id }}
+          branch: ${{ github.ref_name }}
+          device-model: pixel_6
+          device-os: android-35
+          device-locale: en_US
+          include-tags: cat-log-smoke
+          timeout: 20
+
+      - name: Preserve smoke evidence
+        if: always()
+        shell: bash
+        env:
+          ACTION_OUTCOME: ${{ steps.maestro.outcome }}
+          CLOUD_STATUS: ${{ steps.maestro.outputs.MAESTRO_CLOUD_UPLOAD_STATUS }}
+          CONSOLE_URL: ${{ steps.maestro.outputs.MAESTRO_CLOUD_CONSOLE_URL }}
+          APP_BINARY_ID: ${{ steps.maestro.outputs.MAESTRO_CLOUD_APP_BINARY_ID }}
+          FLOW_RESULTS: ${{ steps.maestro.outputs.MAESTRO_CLOUD_FLOW_RESULTS }}
+          APK_SHA256: ${{ steps.apk.outputs.sha256 }}
+        run: |
+          set -euo pipefail
+          mkdir -p build/cat-log-maestro
+          printf '%s\n' "${FLOW_RESULTS:-[]}" > build/cat-log-maestro/flow-results.json
+          jq -n             --arg source_sha "$GITHUB_SHA"             --arg artifact_run_id "${{ inputs.artifact_run_id }}"             --arg apk_sha256 "${APK_SHA256:-}"             --arg app_binary_id "${APP_BINARY_ID:-}"             --arg action_outcome "${ACTION_OUTCOME:-UNKNOWN}"             --arg cloud_status "${CLOUD_STATUS:-UNAVAILABLE}"             --arg console_url "${CONSOLE_URL:-UNAVAILABLE}"             '{source_sha:$source_sha,artifact_run_id:$artifact_run_id,apk_sha256:$apk_sha256,app_binary_id:$app_binary_id,action_outcome:$action_outcome,cloud_status:$cloud_status,console_url:$console_url}'             > build/cat-log-maestro/run-metadata.json
+          {
+            echo '## CAT Log Maestro smoke'
+            echo "- source SHA: $GITHUB_SHA"
+            echo "- artifact run: ${{ inputs.artifact_run_id }}"
+            echo "- APK SHA-256: ${APK_SHA256:-UNAVAILABLE}"
+            echo "- action outcome: ${ACTION_OUTCOME:-UNKNOWN}"
+            echo "- Cloud status: ${CLOUD_STATUS:-UNAVAILABLE}"
+            echo "- Console: ${CONSOLE_URL:-UNAVAILABLE}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload smoke evidence metadata
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: cat-log-maestro-evidence-${{ github.run_id }}
+          path: build/cat-log-maestro
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Require terminal Cloud success
+        if: always()
+        env:
+          ACTION_OUTCOME: ${{ steps.maestro.outcome }}
+          CLOUD_STATUS: ${{ steps.maestro.outputs.MAESTRO_CLOUD_UPLOAD_STATUS }}
+        run: |
+          set -euo pipefail
+          test "${ACTION_OUTCOME:-}" = success
+          test "${CLOUD_STATUS:-}" = SUCCESS
