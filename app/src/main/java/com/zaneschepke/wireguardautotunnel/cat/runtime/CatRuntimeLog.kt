@@ -71,7 +71,7 @@ object CatRuntimeLog {
 
     fun record(component: String, eventType: String, action: String? = null, expected: String? = null, actual: String? = null,
         result: String? = null, evidence: String? = null, error: Throwable? = null, durationMs: Long? = null,
-        attributes: Map<String, *> = emptyMap(), correlationId: String = UUID.randomUUID().toString()) {
+        attributes: Map<String, Any?> = emptyMap(), correlationId: String = UUID.randomUUID().toString()) {
         val s = state ?: return
         s.enqueue(CatLogRecord(System.currentTimeMillis(), SystemClock.elapsedRealtime(), s.sessionId, correlationId, component, eventType,
             action, expected, actual, result, evidence, durationMs, CatLogSanitizer.throwable(error), CatLogSanitizer.attributes(attributes)))
