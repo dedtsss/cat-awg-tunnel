@@ -857,4 +857,11 @@
     <string name="tunnel_dns">Tunnel DNS</string>
     <string name="use_tunnel_dns_servers">Use tunnel DNS servers</string>
     <string name="error_config_missing_dns">Tunnel %1$s is missing DNS servers that are required for your current app settings</string>
+    <string name="cat_runtime_log_title">CAT Log — app runtime</string>
+    <string name="cat_runtime_log_desc">Always-on local crash, exception, stall, lifecycle and navigation evidence. VPN/network diagnostics stay separate.</string>
+    <string name="cat_runtime_log_export">Share CAT Log</string>
+    <string name="cat_runtime_log_clear">Clear CAT Log</string>
+    <string name="cat_runtime_log_refresh">Refresh</string>
+    <string name="cat_runtime_log_share">Share CAT Log diagnostics</string>
+    <string name="cat_runtime_log_export_failed">CAT Log export failed</string>
 </resources>

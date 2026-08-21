@@ -13,6 +13,7 @@ concurrency:
 
 env:
   CAT_TEST_VERSION_BASE: '50202'
+  SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
 
 jobs:
   verify-and-package:
@@ -20,8 +21,12 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
+          ref: ${{ env.SOURCE_SHA }}
           fetch-depth: 0
           submodules: recursive
+
+      - name: Verify exact source checkout
+        run: test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
 
       - name: Set up JDK 21
         uses: actions/setup-java@v5
@@ -60,7 +65,7 @@ jobs:
 
       - name: Assemble one signed installable APK
         env:
-          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_SHA: ${{ env.SOURCE_SHA }}
           GITHUB_RUN_NUMBER: ${{ github.run_number }}
         run: |
           set -euo pipefail
@@ -104,7 +109,7 @@ jobs:
       - name: Upload installable debug APK
         uses: actions/upload-artifact@v7
         with:
-          name: cat-awg-tunnel-debug-${{ github.sha }}
+          name: cat-awg-tunnel-debug-${{ env.SOURCE_SHA }}
           path: ${{ steps.apk.outputs.path }}
           if-no-files-found: error
           retention-days: 14

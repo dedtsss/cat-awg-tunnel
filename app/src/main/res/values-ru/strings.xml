@@ -747,4 +747,11 @@
     <string name="seamless_recovery">Восстанавливать туннель</string>
     <string name="seamless_recovery_desc">Обеспечивает защиту при восстановлении после изменений DDNS, сетевых переключений и проблем с NAT</string>
     <string name="now_in_template">Сейчас в %1$s</string>
+    <string name="cat_runtime_log_title">CAT Log — работа приложения</string>
+    <string name="cat_runtime_log_desc">Постоянный локальный журнал сбоев, исключений, зависаний, жизненного цикла и навигации. Диагностика VPN и сети остаётся отдельной.</string>
+    <string name="cat_runtime_log_export">Поделиться CAT Log</string>
+    <string name="cat_runtime_log_clear">Очистить CAT Log</string>
+    <string name="cat_runtime_log_refresh">Обновить</string>
+    <string name="cat_runtime_log_share">Поделиться диагностикой CAT Log</string>
+    <string name="cat_runtime_log_export_failed">Не удалось экспортировать CAT Log</string>
 </resources>

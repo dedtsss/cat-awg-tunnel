@@ -3,6 +3,7 @@ package com.zaneschepke.wireguardautotunnel.lifecyle
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
+import com.zaneschepke.wireguardautotunnel.cat.runtime.CatRuntimeLog
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -18,9 +19,11 @@ class AppVisibilityObserver : DefaultLifecycleObserver {
 
     override fun onStart(owner: LifecycleOwner) {
         _isForeground.value = true
+        CatRuntimeLog.appForeground(true)
     }
 
     override fun onStop(owner: LifecycleOwner) {
         _isForeground.value = false
+        CatRuntimeLog.appForeground(false)
     }
 }

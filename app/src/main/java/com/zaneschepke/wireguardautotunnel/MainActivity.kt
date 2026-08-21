@@ -90,6 +90,7 @@ import com.dokar.sonner.Toaster
 import com.dokar.sonner.rememberToasterState
 import com.zaneschepke.networkmonitor.NetworkMonitor
 import com.zaneschepke.wireguardautotunnel.cat.routing.DomainRoutingCoordinator
+import com.zaneschepke.wireguardautotunnel.cat.runtime.CatRuntimeLog
 import com.zaneschepke.wireguardautotunnel.cat.server.CatPairingImportStore
 import com.zaneschepke.wireguardautotunnel.data.AppDatabase
 import com.zaneschepke.wireguardautotunnel.domain.enums.TunnelMode
@@ -235,6 +236,13 @@ class MainActivity : AppCompatActivity() {
                     onDismiss = { pendingSharedDomain = null },
                     onApply = { tunnelId, matchMode ->
                         scope.launch {
+                            val catOperation = CatRuntimeLog.startOperation(
+                                "routing-ui",
+                                "shared_domain.apply",
+                                "apply shared domain rule",
+                                "rule saved and applied",
+                                15_000L,
+                            )
                             runCatching {
                                     domainRoutingCoordinator.createAndApply(
                                         tunnelId = tunnelId,
@@ -245,6 +253,7 @@ class MainActivity : AppCompatActivity() {
                                     )
                                 }
                                 .onSuccess {
+                                    CatRuntimeLog.finishOperation(catOperation, "rule applied")
                                     pendingSharedDomain = null
                                     snackbarChannel.send(
                                         GlobalSideEffect.Snackbar(
@@ -256,6 +265,14 @@ class MainActivity : AppCompatActivity() {
                                     )
                                 }
                                 .onFailure { error ->
+                                    CatRuntimeLog.finishOperation(catOperation, "apply failed", "FAIL", "routing operation failed")
+                                    CatRuntimeLog.handledException(
+                                        "routing-ui",
+                                        "shared_domain.apply_error",
+                                        "apply shared domain rule",
+                                        "rule saved and applied",
+                                        error,
+                                    )
                                     snackbarChannel.send(
                                         GlobalSideEffect.Snackbar(
                                             StringValue.DynamicString(

@@ -1,0 +1,24 @@
+appId: com.dedtsss.catawgtunnel.debug
+name: CAT runtime log smoke
+tags:
+  - cat-log-smoke
+---
+- launchApp:
+    clearState: true
+- tapOn: "Settings"
+- assertVisible: "Tunnel"
+- scrollUntilVisible:
+    element: "Client diagnostics"
+    direction: DOWN
+- tapOn: "Client diagnostics"
+- assertVisible: "Diagnostics"
+- assertVisible: "CAT Log — app runtime"
+- assertVisible: "Share CAT Log"
+- assertVisible: "Clear CAT Log"
+- tapOn: "Refresh"
+- takeScreenshot: cat-log-diagnostics
+- tapOn: "Share CAT Log"
+- assertVisible: "Share with"
+- takeScreenshot: cat-log-share-sheet
+- pressKey: Back
+- assertVisible: "CAT Log — app runtime"
