@@ -149,8 +149,7 @@ class DomainRoutingTest {
             )
         val changedGlobal = global.copy(routeTarget = DomainRouteTarget.DEFAULT_TUNNEL)
 
-        val effective =
-            DomainRoutingPlanner.effectiveRules(listOf(changedGlobal), listOf(copied))
+        val effective = DomainRoutingPlanner.effectiveRules(listOf(changedGlobal), listOf(copied))
 
         assertEquals(DomainRouteTarget.LOCAL_DIRECT, effective.single().routeTarget)
         assertEquals("copied", effective.single().id)
