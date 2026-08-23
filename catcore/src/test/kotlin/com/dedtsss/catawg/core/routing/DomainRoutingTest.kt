@@ -93,17 +93,9 @@ class DomainRoutingTest {
     @Test
     fun `global and local rules coexist while a local rule overrides the same global key`() {
         val globalDirect =
-            rule(
-                id = "global-direct",
-                domain = "example.com",
-                ipv4 = listOf(ip("198.51.100.20")),
-            )
+            rule(id = "global-direct", domain = "example.com", ipv4 = listOf(ip("198.51.100.20")))
         val globalOther =
-            rule(
-                id = "global-other",
-                domain = "global.example",
-                ipv4 = listOf(ip("198.51.100.21")),
-            )
+            rule(id = "global-other", domain = "global.example", ipv4 = listOf(ip("198.51.100.21")))
         val localOverride =
             rule(
                 id = "local-override",
@@ -111,11 +103,7 @@ class DomainRoutingTest {
                 target = DomainRouteTarget.DEFAULT_TUNNEL,
             )
         val localOnly =
-            rule(
-                id = "local-only",
-                domain = "local.example",
-                ipv4 = listOf(ip("198.51.100.22")),
-            )
+            rule(id = "local-only", domain = "local.example", ipv4 = listOf(ip("198.51.100.22")))
 
         val effective =
             DomainRoutingPlanner.effectiveRules(
@@ -135,18 +123,8 @@ class DomainRoutingTest {
 
     @Test
     fun `copied global rule is an independent local snapshot`() {
-        val global =
-            rule(
-                id = "global",
-                domain = "example.com",
-                ipv4 = listOf(ip("198.51.100.30")),
-            )
-        val copied =
-            global.copy(
-                id = "copied",
-                tunnelId = 99,
-                source = DomainRuleSource.SHARE,
-            )
+        val global = rule(id = "global", domain = "example.com", ipv4 = listOf(ip("198.51.100.30")))
+        val copied = global.copy(id = "copied", tunnelId = 99, source = DomainRuleSource.SHARE)
         val changedGlobal = global.copy(routeTarget = DomainRouteTarget.DEFAULT_TUNNEL)
 
         val effective = DomainRoutingPlanner.effectiveRules(listOf(changedGlobal), listOf(copied))
