@@ -98,6 +98,14 @@ fun DomainSitesScreen(viewModel: DomainSitesViewModel) {
             Button(onClick = { showAdd = true }) {
                 Text(stringResource(R.string.domain_sites_add))
             }
+            if (!state.isGlobalScope) {
+                TextButton(
+                    onClick = viewModel::copyGlobal,
+                    enabled = state.globalRules.isNotEmpty() && !state.isWorking,
+                ) {
+                    Text(stringResource(R.string.copy_global))
+                }
+            }
             TextButton(onClick = viewModel::refresh, enabled = !state.isWorking) {
                 Text(stringResource(R.string.domain_sites_refresh_ips))
             }

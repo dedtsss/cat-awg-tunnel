@@ -79,6 +79,7 @@ class SettingsViewModel(
 
     fun setGlobalSplitTunneling(to: Boolean) = intent {
         settingsRepository.upsert(state.settings.copy(isGlobalSplitTunnelEnabled = to))
+        tunnelCoordinator.reapplyActiveTunnels()
     }
 
     fun setLocalLogging(to: Boolean) = intent {

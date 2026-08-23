@@ -190,6 +190,7 @@ class TunnelBackend(
         dns: TunnelDnsConfig?,
     ): Boolean {
         engine.stop(handle, mode)
+        recreateVpnInterface(tunnel, mode, dns)
         val result = engine.start(tunnel.id, mode, dns)
         onEngineStartResult(tunnel.id, result)
         return true
@@ -213,6 +214,7 @@ class TunnelBackend(
 
         val runtimeMode = mode.withEndpointsFrom(activeConfig)
         engine.stop(handle, mode)
+        recreateVpnInterface(tunnel, runtimeMode, tunnelDnsConfig)
         val result = engine.start(tunnel.id, runtimeMode, tunnelDnsConfig)
         onEngineStartResult(tunnel.id, result)
         return true
@@ -261,9 +263,29 @@ class TunnelBackend(
         }
 
         engine.stop(handle, mode)
+        recreateVpnInterface(tunnel, runtimeMode, bootstrapResult.resolvedTunnelDnsConfig)
         val result = engine.start(tunnel.id, runtimeMode, bootstrapResult.resolvedTunnelDnsConfig)
         onEngineStartResult(tunnel.id, result)
         return true
+    }
+
+    /**
+     * A VPN bounce must establish a new Builder snapshot. Native AWG restart alone reuses the
+     * already-established Android interface, leaving app lists, routes, DNS, and domain
+     * exclusions stale until a full manual OFF -> ON cycle.
+     */
+    private suspend fun recreateVpnInterface(
+        tunnel: Tunnel,
+        mode: BackendMode,
+        tunnelDnsConfig: TunnelDnsConfig?,
+    ) {
+        if (mode !is BackendMode.Vpn) return
+
+        Timber.d("Rebuilding Android VPN interface for tunnel ${tunnel.id}")
+        serviceManager
+            .ensureVpnReady()
+            .createTunInterface(tunnel, mode.config, tunnelDnsConfig?.fakeDns)
+        Timber.d("Android VPN interface rebuilt for tunnel ${tunnel.id}")
     }
 
     override suspend fun bounceTunnelDevice(tunnelId: Int, withFreshResolution: Boolean): Boolean =

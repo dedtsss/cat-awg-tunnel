@@ -9,6 +9,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.material3.TextButton
 import com.zaneschepke.wireguardautotunnel.R
 import com.zaneschepke.wireguardautotunnel.domain.model.InstalledPackage
 import com.zaneschepke.wireguardautotunnel.ui.common.label.GroupLabel
@@ -20,12 +21,19 @@ fun SplitTunnelContent(
     installedPackages: List<InstalledPackage>,
     onSplitOptionChange: (SplitOption) -> Unit,
     onAppSelectionToggle: (String, Boolean) -> Unit,
+    showCopyGlobal: Boolean = false,
+    onCopyGlobal: () -> Unit = {},
 ) {
     Column(
         verticalArrangement = Arrangement.spacedBy(24.dp, Alignment.Top),
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.fillMaxSize(),
     ) {
+        if (showCopyGlobal) {
+            TextButton(onClick = onCopyGlobal) {
+                androidx.compose.material3.Text(stringResource(R.string.copy_global))
+            }
+        }
         Column {
             GroupLabel(
                 stringResource(R.string.mode),

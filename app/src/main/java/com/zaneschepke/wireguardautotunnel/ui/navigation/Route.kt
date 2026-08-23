@@ -104,6 +104,13 @@ sealed class Route : NavKey {
 
     @Keep
     @Serializable
+    data class DomainSitesGlobal(val id: Int) : Route(), SecureRoute {
+        override val requiresProtection: Boolean
+            get() = true
+    }
+
+    @Keep
+    @Serializable
     data class ConfigGlobal(val id: Int?) : Route(), SecureRoute {
         override val requiresProtection: Boolean
             get() = true
@@ -236,6 +243,7 @@ enum class Tab(
                 Route.Language,
                 Route.Display,
                 is Route.ConfigGlobal,
+                is Route.DomainSitesGlobal,
                 Route.TunnelGlobals,
                 Route.Security,
                 Route.Monitoring,

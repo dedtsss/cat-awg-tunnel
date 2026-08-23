@@ -132,6 +132,14 @@ class TunnelCoordinator(
             stopActiveTunnelsInternal(source)
         }
 
+    /** Rebuilds active tunnels from persisted config and current global policy snapshots. */
+    suspend fun reapplyActiveTunnels() = tunnelMutex.withLock {
+        val activeIds = backendStatus.value.activeTunnels.keys.toList()
+        val configs = activeIds.mapNotNull { tunnelRepository.getById(it) }
+        activeIds.forEach { stopTunnelInternal(it, TunnelActionSource.AUTO_TUNNEL) }
+        configs.forEach { startTunnelInternal(it, TunnelActionSource.AUTO_TUNNEL) }
+    }
+
     private suspend fun startTunnelInternal(
         tunnelConfig: TunnelConfig,
         source: TunnelActionSource,

@@ -178,6 +178,19 @@ object DomainRuleMatcher {
 }
 
 object DomainRoutingPlanner {
+    /**
+     * Combines common rules with a tunnel's local snapshot. A local rule with the same normalized
+     * host and match mode is an explicit override of the common rule; unrelated rules coexist.
+     */
+    fun effectiveRules(
+        globalRules: Iterable<DomainRule>,
+        localRules: Iterable<DomainRule>,
+    ): List<DomainRule> {
+        val local = localRules.toList()
+        val localKeys = local.map { it.domain to it.matchMode }.toSet()
+        return globalRules.filterNot { it.domain to it.matchMode in localKeys } + local
+    }
+
     fun exclusions(rules: Iterable<DomainRule>): List<RouteExclusion> {
         return rules
             .asSequence()

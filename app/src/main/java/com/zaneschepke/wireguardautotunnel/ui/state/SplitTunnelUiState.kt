@@ -9,6 +9,7 @@ data class SplitTunnelUiState(
     val isLoading: Boolean = true,
     val tunnel: TunnelConfig? = null,
     val tunnels: List<TunnelSummary> = emptyList(),
+    val globalTunnel: TunnelSummary? = null,
     val splitOption: SplitOption = SplitOption.ALL,
     val selectedPackages: Set<String> = emptySet(),
     val selectedCopySourceTunnelId: Int? = null,

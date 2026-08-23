@@ -8,6 +8,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.CallSplit
 import androidx.compose.material.icons.outlined.Description
+import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -86,6 +87,16 @@ fun TunnelGlobalsScreen(
             onClick = {
                 uiState.globalTunnelConfig?.let {
                     navController.push(Route.ConfigGlobal(id = it.id))
+                }
+            },
+        )
+        SurfaceRow(
+            leading = { Icon(Icons.Outlined.Language, contentDescription = null) },
+            title = stringResource(R.string.domain_sites),
+            description = { DescriptionText(stringResource(R.string.domain_sites_desc)) },
+            onClick = {
+                uiState.globalTunnelConfig?.let {
+                    navController.push(Route.DomainSitesGlobal(id = it.id))
                 }
             },
         )

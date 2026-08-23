@@ -56,6 +56,7 @@ val catModule = module {
     single {
         DomainRoutingCoordinator(
             repository = get(),
+            tunnelRepository = get(),
             resolver = get(),
             routeProvider = get(),
             backend = get(),

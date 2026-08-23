@@ -163,6 +163,7 @@
     <string name="domain_sites_desc">Domain-based local bypass and route diagnostics</string>
     <string name="domain_sites_search">Search sites</string>
     <string name="domain_sites_add">Add site</string>
+    <string name="copy_global">Copy global</string>
     <string name="domain_sites_refresh_ips">Refresh IPs</string>
     <string name="domain_sites_diagnose">Why does this site not work?</string>
     <string name="domain_sites_export_json">Export JSON</string>
