@@ -90,14 +90,14 @@ val appModule = module {
     viewModel { ConfiguratorViewModel(get(), get(), get(), get(), get(), get(), get(), androidContext()) }
     viewModel { (id: Int?) -> ConfigEditViewModel(get(), get(), get(), get(), get(), id) }
     viewModelOf(::DnsViewModel)
-    viewModel { (id: Int) -> DomainSitesViewModel(get(), get(), get(), androidContext(), id) }
+    viewModel { (id: Int) -> DomainSitesViewModel(get(), get(), get(), androidContext(), get(), id) }
     viewModelOf(::LockdownViewModel)
     viewModelOf(::LoggerViewModel)
     viewModelOf(::MonitoringViewModel)
     viewModelOf(::ProxySettingsViewModel)
     viewModelOf(::SettingsViewModel)
     viewModelOf(::SharedAppViewModel)
-    viewModel { (id: Int) -> SplitTunnelViewModel(get(), get(), get(), id) }
+    viewModel { (id: Int) -> SplitTunnelViewModel(get(), get(), get(), get(), id) }
     viewModel { SupportViewModel(get(), get(named(Dispatcher.MAIN)), get()) }
     viewModel { (id: Int) -> TunnelViewModel(get(), get(), id) }
 

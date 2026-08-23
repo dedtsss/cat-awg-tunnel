@@ -6,6 +6,7 @@ import com.zaneschepke.wireguardautotunnel.R
 import com.zaneschepke.wireguardautotunnel.domain.repository.GlobalEffectRepository
 import com.zaneschepke.wireguardautotunnel.domain.repository.InstalledPackageRepository
 import com.zaneschepke.wireguardautotunnel.domain.repository.TunnelRepository
+import com.zaneschepke.wireguardautotunnel.core.orchestration.TunnelCoordinator
 import com.zaneschepke.wireguardautotunnel.domain.sideeffect.GlobalSideEffect
 import com.zaneschepke.wireguardautotunnel.ui.screens.tunnels.splittunnel.state.SplitOption
 import com.zaneschepke.wireguardautotunnel.ui.state.EditableConfig
@@ -21,6 +22,7 @@ class SplitTunnelViewModel(
     private val tunnelRepository: TunnelRepository,
     private val packageRepository: InstalledPackageRepository,
     private val globalEffectRepository: GlobalEffectRepository,
+    private val tunnelCoordinator: TunnelCoordinator,
     val tunnelId: Int,
 ) : OrbitContainerHost<SplitTunnelUiState, SplitTunnelUiState, Nothing>, ViewModel() {
 
@@ -36,7 +38,12 @@ class SplitTunnelViewModel(
             val currentTunnelFlow =
                 tunnelRepository.flow.map { list -> list.firstOrNull { it.id == tunnelId } }
 
-            combine(packagesFlow, tunnelsFlow, currentTunnelFlow) { packages, tunnels, tunnel ->
+            combine(
+                    packagesFlow,
+                    tunnelsFlow,
+                    currentTunnelFlow,
+                    tunnelRepository.globalTunnelFlow,
+                ) { packages, tunnels, tunnel, globalTunnel ->
                     val currentState = state
 
                     val config = tunnel?.getConfig()
@@ -57,6 +64,7 @@ class SplitTunnelViewModel(
                     SplitTunnelUiState(
                         installedPackages = packages,
                         tunnels = tunnels.map { it.toSummary() },
+                        globalTunnel = globalTunnel?.toSummary(),
                         tunnel = tunnel,
                         isLoading = packages.isEmpty(),
                         splitOption =
@@ -91,6 +99,7 @@ class SplitTunnelViewModel(
         tunnelRepository.save(
             tunnel.copy(quickConfig = updatedConfig.withName(tunnel.name).asQuickString())
         )
+        tunnelCoordinator.reapplyActiveTunnels()
         postSideEffect(
             GlobalSideEffect.Snackbar(
                 StringValue.StringResource(R.string.config_changes_saved),
@@ -141,5 +150,22 @@ class SplitTunnelViewModel(
 
     fun selectCopySource(tunnelId: Int?) = intent {
         reduce { state.copy(selectedCopySourceTunnelId = tunnelId) }
+    }
+
+    /** Copies the global app policy into this tunnel's editable snapshot. */
+    fun copyGlobal() = intent {
+        val global = state.globalTunnel ?: return@intent
+        if (global.id == tunnelId) return@intent
+
+        val config = tunnelRepository.getById(global.id)?.getConfig() ?: return@intent
+        val (option, pkgs) =
+            when {
+                config.`interface`.allExcludedApps.isNotEmpty() ->
+                    SplitOption.EXCLUDE to config.`interface`.allExcludedApps.toSet()
+                config.`interface`.allIncludedApps.isNotEmpty() ->
+                    SplitOption.INCLUDE to config.`interface`.allIncludedApps.toSet()
+                else -> SplitOption.ALL to emptySet()
+            }
+        reduce { state.copy(splitOption = option, selectedPackages = pkgs) }
     }
 }

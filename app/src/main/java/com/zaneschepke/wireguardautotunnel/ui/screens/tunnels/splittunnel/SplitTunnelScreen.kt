@@ -70,5 +70,7 @@ fun SplitTunnelScreen(
         onAppSelectionToggle = { appPackage, enabled ->
             viewModel.togglePackage(appPackage, enabled)
         },
+        showCopyGlobal = uiState.globalTunnel != null && uiState.tunnel?.isGlobalConfig != true,
+        onCopyGlobal = viewModel::copyGlobal,
     )
 }

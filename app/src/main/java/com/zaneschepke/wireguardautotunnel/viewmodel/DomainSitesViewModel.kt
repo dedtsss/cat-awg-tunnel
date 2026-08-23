@@ -15,10 +15,12 @@ import com.dedtsss.catawg.core.routing.DomainRuleCodec
 import com.dedtsss.catawg.core.routing.DomainResolutionStatus
 import com.zaneschepke.wireguardautotunnel.cat.routing.DomainRoutingCoordinator
 import com.zaneschepke.wireguardautotunnel.R
+import com.zaneschepke.wireguardautotunnel.domain.repository.TunnelRepository
 import com.zaneschepke.wireguardautotunnel.ui.state.DomainSitesUiState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.UUID
@@ -28,6 +30,7 @@ class DomainSitesViewModel(
     private val coordinator: DomainRoutingCoordinator,
     private val resolver: DomainResolver,
     private val context: Context,
+    private val tunnelRepository: TunnelRepository,
     val tunnelId: Int,
 ) : ViewModel() {
     private val _state = MutableStateFlow(DomainSitesUiState())
@@ -35,9 +38,23 @@ class DomainSitesViewModel(
 
     init {
         viewModelScope.launch {
-            repository.rules.map { all -> all.filter { it.tunnelId == tunnelId } }.collect { rules ->
-                _state.update { it.copy(rules = rules, isWorking = false) }
-            }
+            combine(repository.rules, tunnelRepository.globalTunnelFlow) { all, global ->
+                    Triple(
+                        all.filter { it.tunnelId == tunnelId },
+                        all.filter { it.tunnelId == global?.id },
+                        tunnelId == global?.id,
+                    )
+                }
+                .collect { (rules, globalRules, isGlobalScope) ->
+                    _state.update {
+                        it.copy(
+                            rules = rules,
+                            globalRules = globalRules,
+                            isGlobalScope = isGlobalScope,
+                            isWorking = false,
+                        )
+                    }
+                }
         }
     }
 
@@ -119,6 +136,31 @@ class DomainSitesViewModel(
     }
 
     fun dismissDiagnosis() = _state.update { it.copy(diagnosis = null) }
+
+    /** Replaces local rules with an independent copy of the current global rules. */
+    fun copyGlobal() = runAction {
+        val globalId = tunnelRepository.globalTunnelFlow.first()?.id
+            ?: throw IllegalStateException("Global tunnel is unavailable")
+        if (globalId == tunnelId) return@runAction
+
+        val snapshot = repository.forTunnel(globalId)
+        repository.deleteForTunnel(tunnelId)
+        snapshot.forEach { rule ->
+            repository.upsert(
+                rule.copy(
+                    id = UUID.randomUUID().toString(),
+                    tunnelId = tunnelId,
+                    source = DomainRuleSource.SHARE,
+                    // DNS observations are scope/network dependent and must be rebuilt locally.
+                    resolvedIpv4 = emptyList(),
+                    resolvedIpv6 = emptyList(),
+                    lastResolvedAt = null,
+                    lastResolveStatus = DomainResolutionStatus.NEVER,
+                )
+            )
+        }
+        coordinator.refreshAndRebuild(tunnelId, "global_snapshot_copy")
+    }
 
     fun clearError() = _state.update { it.copy(error = null) }
 

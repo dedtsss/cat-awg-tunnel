@@ -91,6 +91,50 @@ class DomainRoutingTest {
     }
 
     @Test
+    fun `global and local rules coexist while a local rule overrides the same global key`() {
+        val globalDirect =
+            rule(id = "global-direct", domain = "example.com", ipv4 = listOf(ip("198.51.100.20")))
+        val globalOther =
+            rule(id = "global-other", domain = "global.example", ipv4 = listOf(ip("198.51.100.21")))
+        val localOverride =
+            rule(
+                id = "local-override",
+                domain = "example.com",
+                target = DomainRouteTarget.DEFAULT_TUNNEL,
+            )
+        val localOnly =
+            rule(id = "local-only", domain = "local.example", ipv4 = listOf(ip("198.51.100.22")))
+
+        val effective =
+            DomainRoutingPlanner.effectiveRules(
+                listOf(globalDirect, globalOther),
+                listOf(localOverride, localOnly),
+            )
+
+        assertEquals(
+            setOf("global-other", "local-override", "local-only"),
+            effective.map { it.id }.toSet(),
+        )
+        assertEquals(
+            setOf("198.51.100.21", "198.51.100.22"),
+            DomainRoutingPlanner.exclusions(effective).map { it.address }.toSet(),
+        )
+    }
+
+    @Test
+    fun `copied global rule is an independent local snapshot`() {
+        val global = rule(id = "global", domain = "example.com", ipv4 = listOf(ip("198.51.100.30")))
+        val copied = global.copy(id = "copied", tunnelId = 99, source = DomainRuleSource.SHARE)
+        val changedGlobal = global.copy(routeTarget = DomainRouteTarget.DEFAULT_TUNNEL)
+
+        val effective = DomainRoutingPlanner.effectiveRules(listOf(changedGlobal), listOf(copied))
+
+        assertEquals(DomainRouteTarget.LOCAL_DIRECT, effective.single().routeTarget)
+        assertEquals("copied", effective.single().id)
+        assertEquals(99, effective.single().tunnelId)
+    }
+
+    @Test
     fun `changed DNS keeps history but routes only the newly current answers`() {
         val before = rule(ipv4 = listOf(ip("198.51.100.1")))
         val merged =

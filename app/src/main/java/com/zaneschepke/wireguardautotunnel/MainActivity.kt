@@ -667,6 +667,13 @@ class MainActivity : AppCompatActivity() {
                                                         )
                                                     DomainSitesScreen(viewModel)
                                                 }
+                                                entry<Route.DomainSitesGlobal> { key ->
+                                                    val viewModel: DomainSitesViewModel =
+                                                        koinViewModel(
+                                                            parameters = { parametersOf(key.id) }
+                                                        )
+                                                    DomainSitesScreen(viewModel)
+                                                }
                                                 entry<Route.ConfigEdit> { key ->
                                                     val viewModel: ConfigEditViewModel =
                                                         koinViewModel(

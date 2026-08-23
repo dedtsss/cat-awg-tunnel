@@ -52,6 +52,7 @@ import com.zaneschepke.wireguardautotunnel.ui.navigation.Route.Configurator
 import com.zaneschepke.wireguardautotunnel.ui.navigation.Route.Display
 import com.zaneschepke.wireguardautotunnel.ui.navigation.Route.Dns
 import com.zaneschepke.wireguardautotunnel.ui.navigation.Route.DomainSites
+import com.zaneschepke.wireguardautotunnel.ui.navigation.Route.DomainSitesGlobal
 import com.zaneschepke.wireguardautotunnel.ui.navigation.Route.Donate
 import com.zaneschepke.wireguardautotunnel.ui.navigation.Route.IPv6
 import com.zaneschepke.wireguardautotunnel.ui.navigation.Route.Language
@@ -344,6 +345,13 @@ fun currentRouteAsNavbarState(
                     NavbarState(
                         topLeading = { TvBackButton { navController.pop() } },
                         topTitle = "Sites",
+                        showBottomItems = true,
+                    )
+                }
+                is DomainSitesGlobal -> {
+                    NavbarState(
+                        topLeading = { TvBackButton { navController.pop() } },
+                        topTitle = context.getString(R.string.domain_sites),
                         showBottomItems = true,
                     )
                 }

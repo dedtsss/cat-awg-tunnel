@@ -165,9 +165,8 @@ class ConfigEditViewModel(
                         state.globalSettings.amneziaEnabled
                     )
 
-                    if (state.isRunning) {
-                        tunnelCoordinator.stopTunnel(it.id)
-                        tunnelCoordinator.startTunnel(it)
+                    if (state.isRunning || state.isGlobalConfig) {
+                        tunnelCoordinator.reapplyActiveTunnels()
                     }
 
                     postSideEffect(
